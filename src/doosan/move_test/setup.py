@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from setuptools.config.expand import cmdclass
 
 import os
 import sys
@@ -6,6 +7,7 @@ import platform
 import subprocess
 import pybind11
 from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 
 def get_library_dir():
     """
@@ -73,6 +75,95 @@ def get_library_dir():
     else:
         raise OSError(f"Unsupported operating system: {system}")
 
+class BuildExtWithStubs(build_ext):
+    """
+    Costum build_ext taht generates .pyi stubs after compilation.
+    """
+
+    def run(self):
+        # First, run the standard build_ext
+        super().run()
+
+        module_name = 'doosan_drfl'
+
+        self.generate_stubs(module_name)
+
+    def generate_stubs(self, module_name):
+        """
+        Attempt to generate .pyi stubs using available tools.
+        Falls back gracefully if tools aren't available.
+        """
+
+        stub_generators = [
+            ('pybind11_stubgen', 'pybind11-stubgen'), # Best option
+            ('stubgen', 'mypy') # Fallbacck
+        ]
+
+        stub_file = f"{module_name}.pyi"
+        stub_dir = os.path.join(os.path.dirname(__file__), 'stubs')
+
+        for generator, package_name in stub_generators:
+            try:
+                # Check if the tool is available
+                result = subprocess.run(
+                    [ sys.executable, '-m', generator, '--help'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print(f"\n{'='*60}")
+                    print(f"Generating stubs using {generator}...")
+                    print(f"\n{'='*60}")
+
+                    os.makedirs(stub_dir, exist_ok=True) #Create stubs dir if not exist
+
+                    if generator == 'pybind11_stubgen':
+                        cmd = [
+                            sys.executable, '-m', generator,
+                            module_name,
+                            '-o', stub_dir,
+                            # '--strip-args', # Cleaner output
+                            # '--output-direcotry', stub_dir
+                        ]
+                    else: # stubgen
+                        cmd = [
+                            sys.executable, '-m', generator,
+                            '-m', module_name,
+                            '-o', stub_dir
+                        ]
+
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+
+                    if result.returncode == 0:
+                        print(f"✔️ Successfully generated {stub_file}")
+                        print(f"  Location: {stub_dir}/{stub_file}")
+
+                        # Move the stub file to the Module direcotry for IDe discorvery
+                        src_stub = os.path.join(stub_dir, stub_file)
+                        dst_stub = os.path.join(os.path.dirname(__file__), stub_file)
+
+                        if os.path.exists(src_stub):
+                            import shutil
+                            shutil.copy2(src_stub, dst_stub)
+                            print(f"  Copied to: {dst_stub}")
+
+                        return True
+
+                    else:
+                        print(f"❌ {generator} failed:")
+                        print(result.stderr)
+            except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+                print(f"⚠️ {generator} not available or failed: {e}")
+                continue
+        print(f"\n⚠️ Could not generate stubs automatically.")
+        print(f"  To enable automatic stub generation, install one of:")
+        print(f"    pip install pybind11-stubgen (preffered)")
+        print(f"    pip install mypy             (fallback)")
+        print(f"\n   Then run: python setup.py build-ext --inplace")
+
+        return False
+
 try:
     lib_dir = get_library_dir()
     abs_lib_dir = os.path.abspath(lib_dir)
@@ -107,6 +198,9 @@ setup(
     version='1.0',
     description='Python wrapper for Doosan DRFL API',
     ext_modules=ext_modules,
+    cmdclass={
+        'build_ext': BuildExtWithStubs,
+    },
     package_data={'doosan_drfl': ['*.pyi']},
     include_package_data=True,
 )
