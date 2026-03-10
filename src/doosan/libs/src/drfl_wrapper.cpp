@@ -70,15 +70,34 @@ PYBIND11_MODULE(doosan_drfl, m){
         .value("Gpio_ctrlbox_digital_index_32", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_32)
         .export_values();
 
+    py::enum_<MANAGE_ACCESS_CONTROL>(m, "MANAGE_ACCESS_CONTROL")
+        .value("Manage_access_control_force_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_FORCE_REQUEST)
+        .value("Manage_access_control_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_REQUEST)
+        .value("Manage_access_control_response_yes", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_YES)
+        .value("Manage_access_control_response_no",
+            MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
+        .export_values();
+
     //bind the CDRFLEx class
     py::class_<DRAFramework::CDRFLEx>(m, "CDRFLEx")
         .def(py::init<>()) // Binds the default constructor
 
         // Bind methods: .def("python_method_name", &CppClass::CppMethod, "Docstring")
+        // Opens intial connection
         .def("open_connection", &DRAFramework::CDRFLEx::open_connection,
              py::arg("ip"), py::arg("port") = 12345,
              "Connect to the Doosan robot controller")
 
+        // Close made connection
+        .def("close_connection", &DRAFramework::CDRFLEx::close_connection,
+            "Disconnect the Doosan robot controller")
+
+        // Set control mode of the robot
+        .def("manage_access_control", &DRAFramework::CDRFLEx::manage_access_control,
+            py::arg("access_control"),
+            "Manage acces control")
+
+        // Get robot state. TODO: replace with newer function
         .def("get_robot_state", &DRAFramework::CDRFLEx::GetRobotState,
              "Retrieve the current state of the robot")
 
