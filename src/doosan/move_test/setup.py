@@ -28,7 +28,7 @@ def get_library_dir():
 
     arch = arch_map.get(machine, 'unknown')
 
-    base_path = "../libs/API_DRFL/library"
+    base_path = "../libs/API-DRFL/library"
 
     if system == 'win32':
         # System is Windows
@@ -50,12 +50,12 @@ def get_library_dir():
             dist_name = distro.id()
             dist_version = distro.version()
         except ImportError:
-            if os.path.exist('/etc/os-release'):
+            if os.path.exists('/etc/os-release'):
                 with open('/etc/os-release') as f:
                     for line in f:
                         if line.startswith('ID='):
                             dist_name = line.split('=')[1].strip().strip('"')
-                        elif line.startwith('VERSION_ID='):
+                        elif line.startswith('VERSION_ID='):
                             dist_version = line.split('=')[1].strip().strip('"')
 
         if dist_name == 'ubuntu':
@@ -69,7 +69,7 @@ def get_library_dir():
                 raise ValueError(f"Unsupported Ubuntu version: {dist_version}. Supported: 18.04, 20.04, 22.04, 24.04")
 
         if arch in ['amd64', 'arm64']: # Generic Linux fallback (Not Ubuntu)
-            return os.path.join(base_path, 'Linux/64bits', arch, '24.04')
+            return os.path.join(base_path, 'Linux/64bits', arch, 'generic')
         else:
             raise ValueError(f"Unsupported Linux architecture: {machine}")
     else:
@@ -123,8 +123,6 @@ class BuildExtWithStubs(build_ext):
                             sys.executable, '-m', generator,
                             module_name,
                             '-o', stub_dir,
-                            # '--strip-args', # Cleaner output
-                            # '--output-direcotry', stub_dir
                         ]
                     else: # stubgen
                         cmd = [
@@ -181,15 +179,15 @@ ext_modules = [
             '../libs/API-DRFL/include'            # Path to Doosan DRFL.h
         ],
         library_dirs=[                      # TODO make variable based on ubuntu version
-            abs_lib_dir          # Path to Doosan libDRFL.a / POCO libs
+            abs_lib_dir,          # Path to Doosan libDRFL.a / POCO libs
         ],
         libraries=[
             'DRFL',                         # Links libDRFL.a / .so
             'PocoFoundation',               # Doosan dependency
-            'PocoNet'                       # Doosan dependency
+            'PocoNet',                      # Doosan dependency
         ],
         language='c++',
-        extra_compile_args=['-std=c++17']   # Ensure C++17 or higher
+        extra_compile_args=['-std=c++17'],   # Ensure C++17 or higher
     ),
 ]
 
