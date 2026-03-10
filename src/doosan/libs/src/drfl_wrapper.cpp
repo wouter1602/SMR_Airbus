@@ -3,7 +3,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "../API-DRFL/include/DRFL.h"
-// #include "../API-DRFL/include/DRFLEx.h"
 //
 namespace py = pybind11;
 
@@ -78,6 +77,9 @@ PYBIND11_MODULE(doosan_drfl, m){
             MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
         .export_values();
 
+    py::class_<LPSYSTEM_VERSION>(m, "LP_SYSTEM_VERSION")
+        .def(py::init<LPSYSTEM_VERSION>());
+
     //bind the CDRFLEx class
     py::class_<DRAFramework::CDRFLEx>(m, "CDRFLEx")
         .def(py::init<>()) // Binds the default constructor
@@ -97,9 +99,17 @@ PYBIND11_MODULE(doosan_drfl, m){
             py::arg("access_control"),
             "Manage acces control")
 
-        // Get robot state. TODO: replace with newer function
-        .def("get_robot_state", &DRAFramework::CDRFLEx::GetRobotState,
+        /*****************
+         * GET FUNCTIONS *
+         *****************/
+        // Get robot state.
+        .def("get_robot_state", &DRAFramework::CDRFLEx::get_robot_state,
              "Retrieve the current state of the robot")
+
+        // Get system version
+        .def("get_system_version", &DRAFramework::CDRFLEx::get_system_version,
+            py::arg("pVersion"),
+            "Retrieve the system version")
 
         // Example of binding a method with arguments float*, float, float, float, MOVE_MODE eMoveMode = MOVE_MODE_ABSOLUTE, float fBlendingRadius = 0.f, BLENDING_SPEED_TYPE eBlendingType = BLENDING_SPEED_TYPE_DUPLICATE
         //
