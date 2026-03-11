@@ -35,66 +35,7 @@ PYBIND11_MODULE(doosan_drfl, m){
         .value("State_last", ROBOT_STATE::STATE_LAST)
         .export_values();
 
-    //bind GPIO controlbox digital enums
-    py::enum_<GPIO_CTRLBOX_DIGITAL_INDEX>(m, "GPIO_CTRLBOX_DIGITAL_INDEX")
-        .value("Gpio_ctrlbox_digital_index_1", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_1)
-        .value("Gpio_ctrlbox_digital_index_2", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_2)
-        .value("Gpio_ctrlbox_digital_index_3", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_3)
-        .value("Gpio_ctrlbox_digital_index_4", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_4)
-        .value("Gpio_ctrlbox_digital_index_5", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_5)
-        .value("Gpio_ctrlbox_digital_index_6", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_6)
-        .value("Gpio_ctrlbox_digital_index_7", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_7)
-        .value("Gpio_ctrlbox_digital_index_8", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_8)
-        .value("Gpio_ctrlbox_digital_index_9", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_9)
-        .value("Gpio_ctrlbox_digital_index_10", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_10)
-        .value("Gpio_ctrlbox_digital_index_11", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_11)
-        .value("Gpio_ctrlbox_digital_index_12", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_12)
-        .value("Gpio_ctrlbox_digital_index_13", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_13)
-        .value("Gpio_ctrlbox_digital_index_14", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_14)
-        .value("Gpio_ctrlbox_digital_index_15", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_15)
-        .value("Gpio_ctrlbox_digital_index_16", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_16)
-        .value("Gpio_ctrlbox_digital_index_17", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_17)
-        .value("Gpio_ctrlbox_digital_index_18", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_18)
-        .value("Gpio_ctrlbox_digital_index_19", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_19)
-        .value("Gpio_ctrlbox_digital_index_20", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_20)
-        .value("Gpio_ctrlbox_digital_index_21", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_21)
-        .value("Gpio_ctrlbox_digital_index_22", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_22)
-        .value("Gpio_ctrlbox_digital_index_23", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_23)
-        .value("Gpio_ctrlbox_digital_index_24", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_24)
-        .value("Gpio_ctrlbox_digital_index_25", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_25)
-        .value("Gpio_ctrlbox_digital_index_26", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_26)
-        .value("Gpio_ctrlbox_digital_index_27", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_27)
-        .value("Gpio_ctrlbox_digital_index_28", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_28)
-        .value("Gpio_ctrlbox_digital_index_29", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_29)
-        .value("Gpio_ctrlbox_digital_index_30", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_30)
-        .value("Gpio_ctrlbox_digital_index_31", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_31)
-        .value("Gpio_ctrlbox_digital_index_32", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_32)
-        .export_values();
-
-    py::enum_<MANAGE_ACCESS_CONTROL>(m, "MANAGE_ACCESS_CONTROL")
-        .value("Manage_access_control_force_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_FORCE_REQUEST)
-        .value("Manage_access_control_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_REQUEST)
-        .value("Manage_access_control_response_yes", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_YES)
-        .value("Manage_access_control_response_no",
-            MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
-        .export_values();
-
-    py::enum_<ROBOT_MODE>(m, "ROBOT_MODE")
-        .value("Robot_mode_manual", ROBOT_MODE::ROBOT_MODE_MANUAL)
-        .value("Robot_mode_autonomous", ROBOT_MODE::ROBOT_MODE_AUTONOMOUS)
-        .value("Robot_mode_recovery", ROBOT_MODE::ROBOT_MODE_RECOVERY)
-        .value("Robot_mode_backdrive", ROBOT_MODE::ROBOT_MODE_BACKDRIVE)
-        .value("Robot_mode_measure", ROBOT_MODE::ROBOT_MODE_MEASURE)
-        .value("Robot_mode_intialize", ROBOT_MODE::ROBOT_MODE_INITIALIZE)
-        .value("robot_mode_last", ROBOT_MODE::ROBOT_MODE_LAST)
-        .export_values();
-
-    py::enum_<ROBOT_SYSTEM>(m, "ROBOT_SYSTEM")
-        .value("Robot_system_real", ROBOT_SYSTEM::ROBOT_SYSTEM_REAL)
-        .value("Robot_system_virtual", ROBOT_SYSTEM::ROBOT_SYSTEM_VIRTUAL)
-        .value("Robot_system_last", ROBOT_SYSTEM::ROBOT_SYSTEM_LAST)
-        .export_values();
-
+    // used to change the robot control mode.
     py::enum_<ROBOT_CONTROL>(m, "ROBOT_CONTROL")
         .value("Control_init_config", ROBOT_CONTROL::CONTROL_INIT_CONFIG)
         .value("Control_enable_operation", ROBOT_CONTROL::CONTROL_ENABLE_OPERATION)
@@ -110,51 +51,242 @@ PYBIND11_MODULE(doosan_drfl, m){
         .value("Control_last", ROBOT_CONTROL::CONTROL_LAST)
         .export_values();
 
-    py::enum_<MOVE_MODE>(m, "MOVE_MODE")
-        .value("Move_mode_absolute", MOVE_MODE::MOVE_MODE_ABSOLUTE)
-        .value("Move_mode_relative", MOVE_MODE::MOVE_MODE_RELATIVE)
-        .export_values();
-
-    py::enum_<BLENDING_SPEED_TYPE>(m, "BLENDING_SPEED_TYPE")
-        .value("Blending_speed_type_duplicate", BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE)
-        .value("Blending_speed_type_override", BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_OVERRIDE)
-        .export_values();
-
+    // Set the speed of monitoring
     py::enum_<MONITORING_SPEED>(m, "MONITORING_SPEED")
         .value("Speed_normal_mode", MONITORING_SPEED::SPEED_NORMAL_MODE)
         .value("Speed_reduced_mode", MONITORING_SPEED::SPEED_REDUCED_MODE)
         .export_values();
 
-    py::enum_<DRL_PROGRAM_STATE>(m, "DRL_PROGRAM_STATE")
-        .value("DRL_program_state_play", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_PLAY)
-        .value("DRL_program_state_stop", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_STOP)
-        .value("DRL_program_state_hold", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_HOLD)
-        .value("DRL_program_state_last", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_LAST)
+    // Set the robot system
+    py::enum_<ROBOT_SYSTEM>(m, "ROBOT_SYSTEM")
+        .value("Robot_system_real", ROBOT_SYSTEM::ROBOT_SYSTEM_REAL)
+        .value("Robot_system_virtual", ROBOT_SYSTEM::ROBOT_SYSTEM_VIRTUAL)
+        .value("Robot_system_last", ROBOT_SYSTEM::ROBOT_SYSTEM_LAST)
         .export_values();
 
+    // Set or read the mode the robot is in
+    py::enum_<ROBOT_MODE>(m, "ROBOT_MODE")
+        .value("Robot_mode_manual", ROBOT_MODE::ROBOT_MODE_MANUAL)
+        .value("Robot_mode_autonomous", ROBOT_MODE::ROBOT_MODE_AUTONOMOUS)
+        .value("Robot_mode_recovery", ROBOT_MODE::ROBOT_MODE_RECOVERY)
+        .value("Robot_mode_backdrive", ROBOT_MODE::ROBOT_MODE_BACKDRIVE)
+        .value("Robot_mode_measure", ROBOT_MODE::ROBOT_MODE_MEASURE)
+        .value("Robot_mode_intialize", ROBOT_MODE::ROBOT_MODE_INITIALIZE)
+        .value("robot_mode_last", ROBOT_MODE::ROBOT_MODE_LAST)
+        .export_values();
+
+    //
+    py::enum_<ROBOT_SPACE>(m, "ROBOT_SPACE")
+        .value("Robot_space_joint", ROBOT_SPACE::ROBOT_SPACE_JOINT)
+        .value("Robot_space_task", ROBOT_SPACE::ROBOT_SPACE_TASK)
+        .export_values();
+
+    //
     py::enum_<SAFE_STOP_RESET_TYPE>(m, "SAFE_STOP_RESET_TYPE")
         .value("Safe_stop_reset_type_default", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT)
         .value("Safe_stop_reset_type_program_stop", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_STOP)
         .value("Safe_stop_reset_type_program_resume", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_RESUME)
         .export_values();
 
-    py::enum_<ROBOT_SPACE>(m, "ROBOT_SPACE")
-        .value("Robot_space_joint", ROBOT_SPACE::ROBOT_SPACE_JOINT)
-        .value("Robot_space_task", ROBOT_SPACE::ROBOT_SPACE_TASK)
+    //
+    py::enum_<MANAGE_ACCESS_CONTROL>(m, "MANAGE_ACCESS_CONTROL")
+        .value("Manage_access_control_force_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_FORCE_REQUEST)
+        .value("Manage_access_control_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_REQUEST)
+        .value("Manage_access_control_response_yes", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_YES)
+        .value("Manage_access_control_response_no",
+            MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
         .export_values();
 
-    py::enum_<TASK_AXIS>(m, "TASK_AXIS")
-        .value("X", TASK_AXIS::TASK_AXIS_X)
-        .value("Y", TASK_AXIS::TASK_AXIS_Y)
-        .value("Z", TASK_AXIS::TASK_AXIS_Z)
-        .export_values();  // Allows TASK_AXIS.X instead of TASK_AXIS.TASK_AXIS_X
+    // Shows the change of control right in the robot controller
+    py::enum_<MONITORING_ACCESS_CONTROL>(m, "MONITORING_ACCESS_CONTROL")
+        .value("Request", MONITORING_ACCESS_CONTROL::MONITORING_ACCESS_CONTROL_REQUEST)
+        .value("Deny", MONITORING_ACCESS_CONTROL::MONITORING_ACCESS_CONTROL_DENY)
+        .value("Grant", MONITORING_ACCESS_CONTROL::MONITORING_ACCESS_CONTROL_GRANT)
+        .value("Loss", MONITORING_ACCESS_CONTROL::MONITORING_ACCESS_CONTROL_LOSS)
+        .value("Last", MONITORING_ACCESS_CONTROL::MONITORING_ACCESS_CONTROL_LAST)
+        .export_values();
 
+    // Defines coordinate system used by the robot.
     py::enum_<COORDINATE_SYSTEM>(m, "COORDINATE_SYSTEM")
         .value("Coordinate_system_base", COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE)
         .value("Coordinate_system_tool", COORDINATE_SYSTEM::COORDINATE_SYSTEM_TOOL)
         .value("Coordinate_system_world", COORDINATE_SYSTEM::COORDINATE_SYSTEM_WORLD)
         .value("Coordinate_system_user_min", COORDINATE_SYSTEM::COORDINATE_SYSTEM_USER_MIN)
         .value("Coordinate_system_user_max", COORDINATE_SYSTEM::COORDINATE_SYSTEM_USER_MAX)
+        .export_values();
+
+    // Each axis that executes jog control in the robot controller
+    py::enum_<JOG_AXIS>(m, "JOG_AXIS")
+        .value("Joint_1", JOG_AXIS::JOG_AXIS_JOINT_1)
+        .value("Joint_2", JOG_AXIS::JOG_AXIS_JOINT_2)
+        .value("Joint_3", JOG_AXIS::JOG_AXIS_JOINT_3)
+        .value("Joint_4", JOG_AXIS::JOG_AXIS_JOINT_4)
+        .value("Joint_5", JOG_AXIS::JOG_AXIS_JOINT_5)
+        .value("Joint_6", JOG_AXIS::JOG_AXIS_JOINT_6)
+        .value("Task_X", JOG_AXIS::JOG_AXIS_TASK_X)
+        .value("Task_Y", JOG_AXIS::JOG_AXIS_TASK_Y)
+        .value("Task_Z", JOG_AXIS::JOG_AXIS_TASK_Z)
+        .value("Task_RX", JOG_AXIS::JOG_AXIS_TASK_RX)
+        .value("Task_RY", JOG_AXIS::JOG_AXIS_TASK_RY)
+        .value("Task_RZ", JOG_AXIS::JOG_AXIS_TASK_RZ)
+        .export_values();
+
+    // Each axis of robot with the standard of joint space coordinate system in the robot controller
+    py::enum_<JOINT_AXIS>(m, "JOINT_AXIS")
+        .value("Axis_1", JOINT_AXIS::JOINT_AXIS_1)
+        .value("Axis_2", JOINT_AXIS::JOINT_AXIS_2)
+        .value("Axis_3", JOINT_AXIS::JOINT_AXIS_3)
+        .value("Axis_4", JOINT_AXIS::JOINT_AXIS_4)
+        .value("Axis_5", JOINT_AXIS::JOINT_AXIS_5)
+        .value("Axis_6", JOINT_AXIS::JOINT_AXIS_6)
+        .export_values();
+
+    // Motion command axis type enumerated value
+    py::enum_<TASK_AXIS>(m, "TASK_AXIS")
+        .value("Axis_X", TASK_AXIS::TASK_AXIS_X)
+        .value("Axis_Y", TASK_AXIS::TASK_AXIS_Y)
+        .value("Axis_Z", TASK_AXIS::TASK_AXIS_Z)
+        .export_values();
+
+    // Force command axis type enumerated value
+    py::enum_<FORCE_AXIS>(m, "FORCE_AXIS")
+        .value("Axis_X", FORCE_AXIS::FORCE_AXIS_X)
+        .value("Axis_Y", FORCE_AXIS::FORCE_AXIS_Y)
+        .value("Axis_Z", FORCE_AXIS::FORCE_AXIS_Z)
+        .value("Axis_A", FORCE_AXIS::FORCE_AXIS_A)
+        .value("Axis_B", FORCE_AXIS::FORCE_AXIS_B)
+        .value("Axis_C", FORCE_AXIS::FORCE_AXIS_C)
+        .export_values();
+
+    //
+    py::enum_<MOVE_REFERENCE>(m, "MOVE_REFERENCE")
+        .value("Base", MOVE_REFERENCE::MOVE_REFERENCE_BASE)
+        .value("Tool", MOVE_REFERENCE::MOVE_REFERENCE_TOOL)
+        .value("World", MOVE_REFERENCE::MOVE_REFERENCE_WORLD)
+        .value("User_min", MOVE_REFERENCE::MOVE_REFERENCE_USER_MIN)
+        .value("User_max", MOVE_REFERENCE::MOVE_REFERENCE_USER_MAX)
+        .export_values();
+
+    // Move command mode type
+    py::enum_<MOVE_MODE>(m, "MOVE_MODE")
+        .value("Absolute", MOVE_MODE::MOVE_MODE_ABSOLUTE)
+        .value("Relative", MOVE_MODE::MOVE_MODE_RELATIVE)
+        .export_values();
+
+    // Force control mode type
+    py::enum_<FORCE_MODE>(m, "FORCE_MODE")
+        .value("Absolute", FORCE_MODE::FORCE_MODE_ABSOLUTE)
+        .value("Relative", FORCE_MODE::FORCE_MODE_RELATIVE)
+        .export_values();
+
+    // Blending velocity type
+    py::enum_<BLENDING_SPEED_TYPE>(m, "BLENDING_SPEED_TYPE")
+        .value("Duplicate", BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE)
+        .value("Override", BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_OVERRIDE)
+        .export_values();
+
+    // Motion stop type
+    py::enum_<STOP_TYPE>(m, "STOP_TYPE")
+        .value("Quick_STO", STOP_TYPE::STOP_TYPE_QUICK_STO)
+        .value("Quick", STOP_TYPE::STOP_TYPE_QUICK)
+        .value("Slow", STOP_TYPE::STOP_TYPE_SLOW)
+        .value("Hold", STOP_TYPE::STOP_TYPE_HOLD)
+        .value("Emergency", STOP_TYPE::STOP_TYPE_EMERGENCY)
+        .export_values();
+
+    // MoveB blending type
+    py::enum_<MOVEB_BLENDING_TYPE>(m, "MOVEB_BLENDING_TYPE")
+        .value("Line", MOVEB_BLENDING_TYPE::MOVEB_BLENDING_TYPE_LINE)
+        .value("Circle", MOVEB_BLENDING_TYPE::MOVEB_BLENDING_TYPE_CIRLCE)
+        .export_values();
+
+    // Spline velocity options
+    py::enum_<SPLINE_VELOCITY_OPTION>(m, "SPLINE_VELOCITY_OPTION")
+        .value("Default", SPLINE_VELOCITY_OPTION::SPLINE_VELOCITY_OPTION_DEFAULT)
+        .value("Const", SPLINE_VELOCITY_OPTION::SPLINE_VELOCITY_OPTION_CONST)
+        .export_values();
+
+    //bind GPIO control box digital enums
+    py::enum_<GPIO_CTRLBOX_DIGITAL_INDEX>(m, "GPIO_CTRLBOX_DIGITAL_INDEX")
+        .value("Index_1", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_1)
+        .value("Index_2", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_2)
+        .value("Index_3", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_3)
+        .value("Index_4", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_4)
+        .value("Index_5", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_5)
+        .value("Index_6", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_6)
+        .value("Index_7", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_7)
+        .value("Index_8", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_8)
+        .value("Index_9", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_9)
+        .value("Index_10", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_10)
+        .value("Index_11", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_11)
+        .value("Index_12", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_12)
+        .value("Index_13", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_13)
+        .value("Index_14", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_14)
+        .value("Index_15", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_15)
+        .value("Index_16", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_16)
+        .value("Index_17", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_17)
+        .value("Index_18", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_18)
+        .value("Index_19", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_19)
+        .value("Index_20", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_20)
+        .value("Index_21", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_21)
+        .value("Index_22", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_22)
+        .value("Index_23", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_23)
+        .value("Index_24", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_24)
+        .value("Index_25", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_25)
+        .value("Index_26", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_26)
+        .value("Index_27", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_27)
+        .value("Index_28", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_28)
+        .value("Index_29", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_29)
+        .value("Index_30", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_30)
+        .value("Index_31", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_31)
+        .value("Index_32", GPIO_CTRLBOX_DIGITAL_INDEX::GPIO_CTRLBOX_DIGITAL_INDEX_32)
+        .export_values();
+
+    // bind GPIO control box analog enums.
+    py::enum_<GPIO_CTRLBOX_ANALOG_INDEX>(m, "GPIO_CTRLBOX_ANALOG_INDEX")
+        .value("Index_1", GPIO_CTRLBOX_ANALOG_INDEX::GPIO_CTRLBOX_ANALOG_INDEX_1)
+        .value("Index_2", GPIO_CTRLBOX_ANALOG_INDEX::GPIO_CTRLBOX_ANALOG_INDEX_2)
+        .export_values();
+
+    // Set GPIO analog type
+    py::enum_<GPIO_ANALOG_TYPE>(m, "GPIO_ANALOG_TYPE")
+        .value("Current", GPIO_ANALOG_TYPE::GPIO_ANALOG_TYPE_CURRENT)
+        .value("Voltage", GPIO_ANALOG_TYPE::GPIO_ANALOG_TYPE_VOLTAGE)
+        .export_values();
+
+    // bind GPIO tools digital enums.
+    py::enum_<GPIO_TOOL_DIGITAL_INDEX>(m, "GPIO_TOOL_DIGITAL_INDEX")
+        .value("Index_1", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_1)
+        .value("Index_2", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_2)
+        .value("Index_3", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_3)
+        .value("Index_4", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_4)
+        .value("Index_5", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_5)
+        .value("Index_6", GPIO_TOOL_DIGITAL_INDEX::GPIO_TOOL_DIGITAL_INDEX_6)
+        .export_values();
+
+    // Modbus register type enums
+    py::enum_<MODBUS_REGISTER_TYPE>(m, "MODBUS_REGISTER_TYPE")
+        .value("Discrete_inputs", MODBUS_REGISTER_TYPE::MODBUS_REGISTER_TYPE_DISCRETE_INPUTS)
+        .value("Coils", MODBUS_REGISTER_TYPE::MODBUS_REGISTER_TYPE_COILS)
+        .value("Input_register", MODBUS_REGISTER_TYPE::MODBUS_REGISTER_TYPE_INPUT_REGISTER)
+        .value("Holding_register", MODBUS_REGISTER_TYPE::MODBUS_REGISTER_TYPE_HOLDING_REGISTER)
+        .export_values();
+
+
+    // Execution state of the program enum
+    py::enum_<DRL_PROGRAM_STATE>(m, "DRL_PROGRAM_STATE")
+        .value("Play", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_PLAY)
+        .value("Stop", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_STOP)
+        .value("Hold", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_HOLD)
+        .value("Last", DRL_PROGRAM_STATE::DRL_PROGRAM_STATE_LAST)
+        .export_values();
+
+    // Program response why it stopped.
+    py::enum_<PROGRAM_STOP_CAUSE>(m, "PROGRAM_STOP_CAUSE")
+        .value("Normal", PROGRAM_STOP_CAUSE::PROGRAM_STOP_CAUSE_NORMAL)
+        .value("Force", PROGRAM_STOP_CAUSE::PROGRAM_STOP_CAUSE_FORCE)
+        .value("Error", PROGRAM_STOP_CAUSE::PROGRAM_STOP_CAUSE_ERROR)
+        .value("Last", PROGRAM_STOP_CAUSE::PROGRAM_STOP_CAUSE_LAST)
         .export_values();
 
     py::enum_<CONTROL_MODE>(m, "CONTROL_MODE")

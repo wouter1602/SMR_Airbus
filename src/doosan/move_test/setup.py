@@ -43,7 +43,7 @@ def get_library_dir():
         # System is Linux
 
         dist_name = None
-        dist_verion = None
+        dist_version = None
 
         try:
             import distro
@@ -77,7 +77,7 @@ def get_library_dir():
 
 class BuildExtWithStubs(build_ext):
     """
-    Costum build_ext taht generates .pyi stubs after compilation.
+    Custom build_ext that generates .pyi stubs after compilation.
     """
 
     def run(self):
