@@ -102,6 +102,44 @@ void array2d_set(T (&arr)[R][C], py::array_t<T> src) {
             s.member[sizeof(s.member) - 1] = '\0'; \
         })
 
+// ─── Callback storage ────────────────────────────────────────────────────────
+// Each callback type gets a std::function wrapper that holds the Python callable.
+// Using std::function (not raw py::object) makes the type explicit and lets C++
+// code store/call it without knowing about pybind11 internals.
+// ─────────────────────────────────────────────────────────────────────────────
+
+#include <functional>
+#include <mutex>
+
+// Global (or per-instance) storage for each callback.
+// Wrapped in std::function so C++ can call them naturally.
+static std::function<void(ROBOT_STATE)> g_onMonitoringStateCB;
+static std::mutex                       g_cbMutex;  // protect if called from C++ threads
+
+// ─── The actual C-style callback that you register with the Doosan API ────────
+// This is what you pass to the C++ library as TOnMonitoringStateCB.
+// It acquires the GIL before touching any Python object, then calls the stored
+// Python callable.  Without the GIL acquisition pybind11 will crash or corrupt
+// memory when the callback arrives on a non-Python thread.
+// ─────────────────────────────────────────────────────────────────────────────
+// static void c_onMonitoringStateCB(const ROBOT_STATE state)
+// {
+//     std::lock_guard<std::mutex> lock(g_cbMutex);
+//     if (!g_onMonitoringStateCB) return;         // no Python callback registered yet
+
+//     // Acquire the GIL – mandatory when calling Python from a C++ thread
+//     py::gil_scoped_acquire gil;
+//     try {
+//         g_onMonitoringStateCB(state);           // calls the stored py::function
+//     } catch (py::error_already_set &e) {
+//         // Swallow exceptions so the C++ library doesn't crash on a Python error.
+//         // In production you'd want to log this properly.
+//         e.restore();
+//         PyErr_Print();
+//     }
+// }
+
+
 PYBIND11_MODULE(doosan_drfl, m){
     m.doc() = "Python binding for Doosan Robotics API-DRFL using pybind11";
 
@@ -528,12 +566,59 @@ PYBIND11_MODULE(doosan_drfl, m){
         .value("NPN", OUTPUT_TYPE::OUTPUT_TYPE_NPN)
         .export_values();
 
+    // Enum to set log level
+    py::enum_<LOG_LEVEL>(m, "LOG_LEVEL")
+        .value("Sys_info", LOG_LEVEL::LOG_LEVEL_SYSINFO)
+        .value("Sys_warn", LOG_LEVEL::LOG_LEVEL_SYSWARN)
+        .value("Sys error", LOG_LEVEL::LOG_LEVEL_SYSERROR)
+        .value("Sys_last", LOG_LEVEL::LOG_LEVEL_LAST)
+        .export_values();
+
+    // Enum for log group
+    py::enum_<LOG_GROUP>(m, "LOG_GROUP")
+        .value("SystemFMK", LOG_GROUP::LOG_GROUP_SYSTEMFMK)
+        .value("MotionLIB", LOG_GROUP::LOG_GROUP_MOTIONLIB)
+        .value("SmartTP", LOG_GROUP::LOG_GROUP_SMARTTP)
+        .value("Inverter", LOG_GROUP::LOG_GROUP_INVERTER)
+        .value("SafetyController", LOG_GROUP::LOG_GROUP_SAFETYCONTROLLER)
+        .value("Last", LOG_GROUP::LOG_GROUP_LAST)
+        .export_values();
+
     /**************
      * ATTRABUTES *
      **************/
 
     m.attr("SPEED_MODE") = m.attr("MONITORING_SPEED");
 
+    /************
+     * Calbacks *
+     ************/
+
+    // m.def("set_on_monitoring_state_cb",
+    //     [](py::object cb) {
+    //         std::lock_guard<std::mutex> lock(g_cbMutex);
+    //         if (cb.is_none()) {
+    //             // Allow passing None to unregister
+    //             g_onMonitoringStateCB = nullptr;
+    //             // Optionally: YourAPI::SetMonitoringStateCB(nullptr);
+    //             } else {
+    //                 if (!py::callable(cb))
+    //                     throw py::type_error("callback must be callable");
+
+    //                 // Store the Python callable inside a std::function.
+    //                 // py::object ref-counts the Python object, keeping it alive.
+    //                 g_onMonitoringStateCB = [cb](ROBOT_STATE state) {
+    //                     cb(state);              // pybind11 auto-converts the enum
+    //                 };
+
+    //                 // Register our C trampoline with the actual library
+    //                 // YourAPI::SetMonitoringStateCB(c_onMonitoringStateCB);
+    //             }
+    //         },
+    //         py::arg("callback"),
+    //         "Register a Python callable for monitoring state changes.\n"
+    //         "Signature: callback(state: ROBOT_STATE) -> None\n"
+    //         "Pass None to unregister.");
 
     /***********
      * STRUCTS *
@@ -946,7 +1031,7 @@ PYBIND11_MODULE(doosan_drfl, m){
         .def(py::init<>())
         STR_PROP(MESSAGE_POPUP, _szText)
         .def_readwrite("_iLevel",   &MESSAGE_POPUP::_iLevel)
-        .def_readwrite("_iBtnType", &MESSAGE_POPUP::_iBtnType;
+        .def_readwrite("_iBtnType", &MESSAGE_POPUP::_iBtnType);
     m.attr("MONITORING_POPUP") = m.attr("MESSAGE_POPUP");
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2085,20 +2170,6 @@ PYBIND11_MODULE(doosan_drfl, m){
         .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
             py::arg("GPIO_index"),
             "Get ctrlbox output status");
-
-#define SIMPLE_OVERRIDE_FLOAT(CLS, FIELD) \
-
-    py::class_<CLS>(m, #CLS) \
-        .def(py::init<>()) \
-        .def_readwrite("_iOverride", &CLS::_iOverride) \
-        .def_readwrite(#FIELD, &CLS::FIELD);
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_TCP_FORCE,    _fForce)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_TCP_POWER,    _fPower)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_TCP_SPEED,    _fSpeed)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_TCP_MOMENTUM, _fMomentum)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_COLLISION,    _fSensitivity)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_SPEED_RATE,   _fSpeedRate)
-    SIMPLE_OVERRIDE_FLOAT(LOCAL_ZONE_PROPERTY_SPEED_REDUCTION, _fReductionRate)
 
     py::class_<LOCAL_ZONE_PROPERTY_COLLISION_STOPMODE>(m, "LOCAL_ZONE_PROPERTY_COLLISION_STOPMODE")
         .def(py::init<>())
