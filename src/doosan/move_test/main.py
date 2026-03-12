@@ -20,7 +20,7 @@ def main():
     if success:
         print("Connected successfully!")
 
-        status = robot.manage_access_control(doosan_drfl.MANAGE_ACCESS_CONTROL.Manage_access_control_force_request)
+        status = robot.manage_access_control(doosan_drfl.MANAGE_ACCESS_CONTROL.Force_request)
 
         print(f"got control status: {status}")
         # Call methods cleanly

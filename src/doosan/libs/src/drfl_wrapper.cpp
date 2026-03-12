@@ -222,76 +222,76 @@ PYBIND11_MODULE(doosan_drfl, m){
      *********/
     // Bind status enum
     py::enum_<ROBOT_STATE>(m, "ROBOT_STATE")
-        .value("State_initializing", ROBOT_STATE::STATE_INITIALIZING)
-        .value("State_standby", ROBOT_STATE::STATE_STANDBY)
-        .value("State_moving", ROBOT_STATE::STATE_MOVING)
-        .value("State_safe_off", ROBOT_STATE::STATE_SAFE_OFF)
-        .value("State_teaching", ROBOT_STATE::STATE_TEACHING)
-        .value("State_safe_stop", ROBOT_STATE::STATE_SAFE_STOP)
-        .value("State_emergency_stop", ROBOT_STATE::STATE_EMERGENCY_STOP)
-        .value("State_homming", ROBOT_STATE::STATE_HOMMING)
-        .value("State_recovery", ROBOT_STATE::STATE_RECOVERY)
-        .value("State_safe_stop2", ROBOT_STATE::STATE_SAFE_STOP2)
-        .value("State_safe_off2", ROBOT_STATE::STATE_SAFE_OFF2)
-        .value("State_reserved1", ROBOT_STATE::STATE_RESERVED1)
-        .value("State_reserved2", ROBOT_STATE::STATE_RESERVED2)
-        .value("State_reserved3", ROBOT_STATE::STATE_RESERVED3)
-        .value("State_reserved4", ROBOT_STATE::STATE_RESERVED4)
-        .value("State_not_ready", ROBOT_STATE::STATE_NOT_READY)
-        .value("State_last", ROBOT_STATE::STATE_LAST)
+        .value("Initializing", ROBOT_STATE::STATE_INITIALIZING)
+        .value("Standby", ROBOT_STATE::STATE_STANDBY)
+        .value("Moving", ROBOT_STATE::STATE_MOVING)
+        .value("Safe_off", ROBOT_STATE::STATE_SAFE_OFF)
+        .value("Teaching", ROBOT_STATE::STATE_TEACHING)
+        .value("Safe_stop", ROBOT_STATE::STATE_SAFE_STOP)
+        .value("Emergency_stop", ROBOT_STATE::STATE_EMERGENCY_STOP)
+        .value("Homming", ROBOT_STATE::STATE_HOMMING)
+        .value("Recovery", ROBOT_STATE::STATE_RECOVERY)
+        .value("Safe_stop2", ROBOT_STATE::STATE_SAFE_STOP2)
+        .value("Safe_off2", ROBOT_STATE::STATE_SAFE_OFF2)
+        .value("Reserved1", ROBOT_STATE::STATE_RESERVED1)
+        .value("Reserved2", ROBOT_STATE::STATE_RESERVED2)
+        .value("Reserved3", ROBOT_STATE::STATE_RESERVED3)
+        .value("Reserved4", ROBOT_STATE::STATE_RESERVED4)
+        .value("Not_ready", ROBOT_STATE::STATE_NOT_READY)
+        .value("Last", ROBOT_STATE::STATE_LAST)
         .export_values();
 
     // used to change the robot control mode.
     py::enum_<ROBOT_CONTROL>(m, "ROBOT_CONTROL")
-        .value("Control_init_config", ROBOT_CONTROL::CONTROL_INIT_CONFIG)
-        .value("Control_enable_operation", ROBOT_CONTROL::CONTROL_ENABLE_OPERATION)
-        .value("Control_reset_safet_stop", ROBOT_CONTROL::CONTROL_RESET_SAFET_STOP)
-        .value("Control_reset_safe_stop", ROBOT_CONTROL::CONTROL_RESET_SAFE_STOP)
-        .value("Control_reset_safet_off", ROBOT_CONTROL::CONTROL_RESET_SAFET_OFF)
-        .value("Control_reset_safe_off", ROBOT_CONTROL::CONTROL_RESET_SAFE_OFF)
-        .value("Control_servo_on", ROBOT_CONTROL::CONTROL_SERVO_ON)
-        .value("Control_recovery_safe_stop", ROBOT_CONTROL::CONTROL_RECOVERY_SAFE_STOP)
-        .value("Control_recovery_safe_off", ROBOT_CONTROL::CONTROL_RECOVERY_SAFE_OFF)
-        .value("Control_recovery_backdrive", ROBOT_CONTROL::CONTROL_RECOVERY_BACKDRIVE)
-        .value("Control_reset_recovery", ROBOT_CONTROL::CONTROL_RESET_RECOVERY)
-        .value("Control_last", ROBOT_CONTROL::CONTROL_LAST)
+        .value("Init_config", ROBOT_CONTROL::CONTROL_INIT_CONFIG)
+        .value("Operation", ROBOT_CONTROL::CONTROL_ENABLE_OPERATION)
+        .value("Reset_safet_stop", ROBOT_CONTROL::CONTROL_RESET_SAFET_STOP)
+        .value("Reset_safe_stop", ROBOT_CONTROL::CONTROL_RESET_SAFE_STOP)
+        .value("Reset_safet_off", ROBOT_CONTROL::CONTROL_RESET_SAFET_OFF)
+        .value("Reset_safe_off", ROBOT_CONTROL::CONTROL_RESET_SAFE_OFF)
+        .value("Servo_on", ROBOT_CONTROL::CONTROL_SERVO_ON)
+        .value("Recovery_safe_stop", ROBOT_CONTROL::CONTROL_RECOVERY_SAFE_STOP)
+        .value("Recovery_safe_off", ROBOT_CONTROL::CONTROL_RECOVERY_SAFE_OFF)
+        .value("Recovery_backdrive", ROBOT_CONTROL::CONTROL_RECOVERY_BACKDRIVE)
+        .value("Reset_recovery", ROBOT_CONTROL::CONTROL_RESET_RECOVERY)
+        .value("Last", ROBOT_CONTROL::CONTROL_LAST)
         .export_values();
 
     // Set the speed of monitoring
     py::enum_<MONITORING_SPEED>(m, "MONITORING_SPEED")
-        .value("Speed_normal_mode", MONITORING_SPEED::SPEED_NORMAL_MODE)
-        .value("Speed_reduced_mode", MONITORING_SPEED::SPEED_REDUCED_MODE)
+        .value("Normal_mode", MONITORING_SPEED::SPEED_NORMAL_MODE)
+        .value("Reduced_mode", MONITORING_SPEED::SPEED_REDUCED_MODE)
         .export_values();
 
     // Set the robot system
     py::enum_<ROBOT_SYSTEM>(m, "ROBOT_SYSTEM")
-        .value("Robot_system_real", ROBOT_SYSTEM::ROBOT_SYSTEM_REAL)
-        .value("Robot_system_virtual", ROBOT_SYSTEM::ROBOT_SYSTEM_VIRTUAL)
-        .value("Robot_system_last", ROBOT_SYSTEM::ROBOT_SYSTEM_LAST)
+        .value("Real", ROBOT_SYSTEM::ROBOT_SYSTEM_REAL)
+        .value("Virtual", ROBOT_SYSTEM::ROBOT_SYSTEM_VIRTUAL)
+        .value("Last", ROBOT_SYSTEM::ROBOT_SYSTEM_LAST)
         .export_values();
 
     // Set or read the mode the robot is in
     py::enum_<ROBOT_MODE>(m, "ROBOT_MODE")
-        .value("Robot_mode_manual", ROBOT_MODE::ROBOT_MODE_MANUAL)
-        .value("Robot_mode_autonomous", ROBOT_MODE::ROBOT_MODE_AUTONOMOUS)
-        .value("Robot_mode_recovery", ROBOT_MODE::ROBOT_MODE_RECOVERY)
-        .value("Robot_mode_backdrive", ROBOT_MODE::ROBOT_MODE_BACKDRIVE)
-        .value("Robot_mode_measure", ROBOT_MODE::ROBOT_MODE_MEASURE)
-        .value("Robot_mode_intialize", ROBOT_MODE::ROBOT_MODE_INITIALIZE)
-        .value("robot_mode_last", ROBOT_MODE::ROBOT_MODE_LAST)
+        .value("Manual", ROBOT_MODE::ROBOT_MODE_MANUAL)
+        .value("Autonomous", ROBOT_MODE::ROBOT_MODE_AUTONOMOUS)
+        .value("Recovery", ROBOT_MODE::ROBOT_MODE_RECOVERY)
+        .value("Backdrive", ROBOT_MODE::ROBOT_MODE_BACKDRIVE)
+        .value("Measure", ROBOT_MODE::ROBOT_MODE_MEASURE)
+        .value("Intialize", ROBOT_MODE::ROBOT_MODE_INITIALIZE)
+        .value("Last", ROBOT_MODE::ROBOT_MODE_LAST)
         .export_values();
 
     //
     py::enum_<ROBOT_SPACE>(m, "ROBOT_SPACE")
-        .value("Robot_space_joint", ROBOT_SPACE::ROBOT_SPACE_JOINT)
-        .value("Robot_space_task", ROBOT_SPACE::ROBOT_SPACE_TASK)
+        .value("Joint", ROBOT_SPACE::ROBOT_SPACE_JOINT)
+        .value("Task", ROBOT_SPACE::ROBOT_SPACE_TASK)
         .export_values();
 
     //
     py::enum_<SAFE_STOP_RESET_TYPE>(m, "SAFE_STOP_RESET_TYPE")
-        .value("Safe_stop_reset_type_default", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT)
-        .value("Safe_stop_reset_type_program_stop", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_STOP)
-        .value("Safe_stop_reset_type_program_resume", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_RESUME)
+        .value("Default", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT)
+        .value("Stop", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_STOP)
+        .value("Resume", SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_PROGRAM_RESUME)
         .export_values();
 
     //
