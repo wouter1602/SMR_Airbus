@@ -7,6 +7,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pybind11/functional.h>
 #include "../API-DRFL/include/DRFL.h"
 //
 namespace py = pybind11;
@@ -102,42 +103,115 @@ void array2d_set(T (&arr)[R][C], py::array_t<T> src) {
             s.member[sizeof(s.member) - 1] = '\0'; \
         })
 
-// ─── Callback storage ────────────────────────────────────────────────────────
-// Each callback type gets a std::function wrapper that holds the Python callable.
-// Using std::function (not raw py::object) makes the type explicit and lets C++
-// code store/call it without knowing about pybind11 internals.
-// ─────────────────────────────────────────────────────────────────────────────
+/* Callback defines */
 
-#include <functional>
-#include <mutex>
+static std::function<void(const LPMONITORING_DATA_EX)>        g_onMonitoringDataEx;
+static std::function<void(const LPMONITORING_CTRLIO_EX)>      g_onMonitoringCtrlIOEx;
+static std::function<void(const LPMONITORING_CTRLIO_EX2)>     g_onMonitoringCtrlIOEx2;
+static std::function<void(LPMESSAGE_POPUP)>                   g_onTpPopup;
+static std::function<void(const std::string&)>                g_onTpLog;   // char[256] mapped to string
+static std::function<void(LPMESSAGE_INPUT)>                   g_onTpGetUserInput;
+static std::function<void(LPMESSAGE_PROGRESS)>                g_onTpProgress;
+static std::function<void(const LPRT_OUTPUT_DATA_LIST)>       g_onRTMonitoringData;
+static std::function<void(const SAFETY_STATE)>                g_onMonitoringSafetyState;
+static std::function<void(const ROBOT_SYSTEM)>                g_onMonitoringRobotSystem;
+static std::function<void(unsigned char)>                     g_onMonitoringSafetyStopType;
+static std::function<void(const LPROBOT_WELDING_DATA)>        g_onMonitoringWeldingData;
+static std::function<void(const LPMONITORING_ALALOG_WELDING)> g_onMonitoringAnalogWeldingData;
+static std::function<void(const LPMONITORING_DIGITAL_WELDING)>g_onMonitoringDigitalWeldingData;
+static std::function<void(const ROBOT_STATE)>                 g_onMonitoringState;
+static std::function<void(const LPMONITORING_DATA)>           g_onMonitoringData;
+static std::function<void(const LPMONITORING_CTRLIO)>         g_onMonitoringCtrlIO;
+static std::function<void(const LPMONITORING_MODBUS)>         g_onMonitoringModbus;
+static std::function<void(LPLOG_ALARM)>                       g_onLogAlarm;
+static std::function<void(const MONITORING_ACCESS_CONTROL)>   g_onMonitoringAccessControl;
+static std::function<void()>                                  g_onHommingCompleted;
+static std::function<void()>                                  g_onTpInitializingCompleted;
+static std::function<void(const PROGRAM_STOP_CAUSE)>          g_onProgramStopped;
+static std::function<void(const MONITORING_SPEED)>            g_onMonitoringSpeedMode;
+static std::function<void()>                                  g_onMasteringNeed;
+static std::function<void()>                                  g_onDisconnected;
 
-// Global (or per-instance) storage for each callback.
-// Wrapped in std::function so C++ can call them naturally.
-static std::function<void(ROBOT_STATE)> g_onMonitoringStateCB;
-static std::mutex                       g_cbMutex;  // protect if called from C++ threads
+// --- C-compatible trampolines (passed to the robot SDK) ---
+// Each trampoline forwards native C callbacks into the stored std::function.
 
-// ─── The actual C-style callback that you register with the Doosan API ────────
-// This is what you pass to the C++ library as TOnMonitoringStateCB.
-// It acquires the GIL before touching any Python object, then calls the stored
-// Python callable.  Without the GIL acquisition pybind11 will crash or corrupt
-// memory when the callback arrives on a non-Python thread.
-// ─────────────────────────────────────────────────────────────────────────────
-// static void c_onMonitoringStateCB(const ROBOT_STATE state)
-// {
-//     std::lock_guard<std::mutex> lock(g_cbMutex);
-//     if (!g_onMonitoringStateCB) return;         // no Python callback registered yet
+static void trampoline_MonitoringDataEx(const LPMONITORING_DATA_EX data)
+    { if (g_onMonitoringDataEx) g_onMonitoringDataEx(data); }
 
-//     // Acquire the GIL – mandatory when calling Python from a C++ thread
-//     py::gil_scoped_acquire gil;
-//     try {
-//         g_onMonitoringStateCB(state);           // calls the stored py::function
-//     } catch (py::error_already_set &e) {
-//         // Swallow exceptions so the C++ library doesn't crash on a Python error.
-//         // In production you'd want to log this properly.
-//         e.restore();
-//         PyErr_Print();
-//     }
-// }
+static void trampoline_MonitoringCtrlIOEx(const LPMONITORING_CTRLIO_EX data)
+    { if (g_onMonitoringCtrlIOEx) g_onMonitoringCtrlIOEx(data); }
+
+static void trampoline_MonitoringCtrlIOEx2(const LPMONITORING_CTRLIO_EX2 data)
+    { if (g_onMonitoringCtrlIOEx2) g_onMonitoringCtrlIOEx2(data); }
+
+static void trampoline_TpPopup(LPMESSAGE_POPUP data)
+    { if (g_onTpPopup) g_onTpPopup(data); }
+
+static void trampoline_TpLog(const char msg[256])
+    { if (g_onTpLog) g_onTpLog(std::string(msg, strnlen(msg, 256))); }
+
+static void trampoline_TpGetUserInput(LPMESSAGE_INPUT data)
+    { if (g_onTpGetUserInput) g_onTpGetUserInput(data); }
+
+static void trampoline_TpProgress(LPMESSAGE_PROGRESS data)
+    { if (g_onTpProgress) g_onTpProgress(data); }
+
+static void trampoline_RTMonitoringData(const LPRT_OUTPUT_DATA_LIST data)
+    { if (g_onRTMonitoringData) g_onRTMonitoringData(data); }
+
+static void trampoline_MonitoringSafetyState(const SAFETY_STATE state)
+    { if (g_onMonitoringSafetyState) g_onMonitoringSafetyState(state); }
+
+static void trampoline_MonitoringRobotSystem(const ROBOT_SYSTEM system)
+    { if (g_onMonitoringRobotSystem) g_onMonitoringRobotSystem(system); }
+
+static void trampoline_MonitoringSafetyStopType(const unsigned char type)
+    { if (g_onMonitoringSafetyStopType) g_onMonitoringSafetyStopType(type); }
+
+static void trampoline_MonitoringWeldingData(const LPROBOT_WELDING_DATA data)
+    { if (g_onMonitoringWeldingData) g_onMonitoringWeldingData(data); }
+
+static void trampoline_MonitoringAnalogWeldingData(const LPMONITORING_ALALOG_WELDING data)
+    { if (g_onMonitoringAnalogWeldingData) g_onMonitoringAnalogWeldingData(data); }
+
+static void trampoline_MonitoringDigitalWeldingData(const LPMONITORING_DIGITAL_WELDING data)
+    { if (g_onMonitoringDigitalWeldingData) g_onMonitoringDigitalWeldingData(data); }
+
+static void trampoline_MonitoringState(const ROBOT_STATE state)
+    { if (g_onMonitoringState) g_onMonitoringState(state); }
+
+static void trampoline_MonitoringData(const LPMONITORING_DATA data)
+    { if (g_onMonitoringData) g_onMonitoringData(data); }
+
+static void trampoline_MonitoringCtrlIO(const LPMONITORING_CTRLIO data)
+    { if (g_onMonitoringCtrlIO) g_onMonitoringCtrlIO(data); }
+
+static void trampoline_MonitoringModbus(const LPMONITORING_MODBUS data)
+    { if (g_onMonitoringModbus) g_onMonitoringModbus(data); }
+
+static void trampoline_LogAlarm(LPLOG_ALARM data)
+    { if (g_onLogAlarm) g_onLogAlarm(data); }
+
+static void trampoline_MonitoringAccessControl(const MONITORING_ACCESS_CONTROL ctrl)
+    { if (g_onMonitoringAccessControl) g_onMonitoringAccessControl(ctrl); }
+
+static void trampoline_HommingCompleted()
+    { if (g_onHommingCompleted) g_onHommingCompleted(); }
+
+static void trampoline_TpInitializingCompleted()
+    { if (g_onTpInitializingCompleted) g_onTpInitializingCompleted(); }
+
+static void trampoline_ProgramStopped(const PROGRAM_STOP_CAUSE cause)
+    { if (g_onProgramStopped) g_onProgramStopped(cause); }
+
+static void trampoline_MonitoringSpeedMode(const MONITORING_SPEED speed)
+    { if (g_onMonitoringSpeedMode) g_onMonitoringSpeedMode(speed); }
+
+static void trampoline_MasteringNeed()
+    { if (g_onMasteringNeed) g_onMasteringNeed(); }
+
+static void trampoline_Disconnected()
+    { if (g_onDisconnected) g_onDisconnected(); }
 
 
 PYBIND11_MODULE(doosan_drfl, m){
@@ -222,11 +296,10 @@ PYBIND11_MODULE(doosan_drfl, m){
 
     //
     py::enum_<MANAGE_ACCESS_CONTROL>(m, "MANAGE_ACCESS_CONTROL")
-        .value("Manage_access_control_force_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_FORCE_REQUEST)
-        .value("Manage_access_control_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_REQUEST)
-        .value("Manage_access_control_response_yes", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_YES)
-        .value("Manage_access_control_response_no",
-            MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
+        .value("Force_request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_FORCE_REQUEST)
+        .value("Request", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_REQUEST)
+        .value("Response_yes", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_YES)
+        .value("Response_no", MANAGE_ACCESS_CONTROL::MANAGE_ACCESS_CONTROL_RESPONSE_NO)
         .export_values();
 
     // Shows the change of control right in the robot controller
@@ -594,31 +667,137 @@ PYBIND11_MODULE(doosan_drfl, m){
      * Calbacks *
      ************/
 
-    // m.def("set_on_monitoring_state_cb",
-    //     [](py::object cb) {
-    //         std::lock_guard<std::mutex> lock(g_cbMutex);
-    //         if (cb.is_none()) {
-    //             // Allow passing None to unregister
-    //             g_onMonitoringStateCB = nullptr;
-    //             // Optionally: YourAPI::SetMonitoringStateCB(nullptr);
-    //             } else {
-    //                 if (!py::callable(cb))
-    //                     throw py::type_error("callback must be callable");
+    m.def("set_on_monitoring_data_ex", [](py::object cb) {
+            g_onMonitoringDataEx = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_DATA_EX)>>();
+            DRAFramework::TOnMonitoringDataCB(cb.is_none() ? nullptr : trampoline_MonitoringDataEx);
+        }, py::arg("callback"), "Register OnMonitoringDataEx callback (or None to clear).");
 
-    //                 // Store the Python callable inside a std::function.
-    //                 // py::object ref-counts the Python object, keeping it alive.
-    //                 g_onMonitoringStateCB = [cb](ROBOT_STATE state) {
-    //                     cb(state);              // pybind11 auto-converts the enum
-    //                 };
+        m.def("set_on_monitoring_ctrl_io_ex", [](py::object cb) {
+            g_onMonitoringCtrlIOEx = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_CTRLIO_EX)>>();
+            DRAFramework::TOnMonitoringCtrlIOExCB(cb.is_none() ? nullptr : trampoline_MonitoringCtrlIOEx);
+        }, py::arg("callback"));
 
-    //                 // Register our C trampoline with the actual library
-    //                 // YourAPI::SetMonitoringStateCB(c_onMonitoringStateCB);
-    //             }
-    //         },
-    //         py::arg("callback"),
-    //         "Register a Python callable for monitoring state changes.\n"
-    //         "Signature: callback(state: ROBOT_STATE) -> None\n"
-    //         "Pass None to unregister.");
+        m.def("set_on_monitoring_ctrl_io_ex2", [](py::object cb) {
+            g_onMonitoringCtrlIOEx2 = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_CTRLIO_EX2)>>();
+            DRAFramework::TOnMonitoringCtrlIOEx2CB(cb.is_none() ? nullptr : trampoline_MonitoringCtrlIOEx2);
+        }, py::arg("callback"));
+
+        m.def("set_on_tp_popup", [](py::object cb) {
+            g_onTpPopup = cb.is_none() ? nullptr : cb.cast<std::function<void(LPMESSAGE_POPUP)>>();
+            DRAFramework::TOnTpPopupCB(cb.is_none() ? nullptr : trampoline_TpPopup);
+        }, py::arg("callback"));
+
+        // char[256] is exposed as a plain Python str
+        m.def("set_on_tp_log", [](py::object cb) {
+            g_onTpLog = cb.is_none() ? nullptr : cb.cast<std::function<void(const std::string&)>>();
+            DRAFramework::TOnTpLogCB(cb.is_none() ? nullptr : trampoline_TpLog);
+        }, py::arg("callback"), "Log message is delivered as a Python str (max 256 chars).");
+
+        m.def("set_on_tp_get_user_input", [](py::object cb) {
+            g_onTpGetUserInput = cb.is_none() ? nullptr : cb.cast<std::function<void(LPMESSAGE_INPUT)>>();
+            DRAFramework::TOnTpGetUserInputCB(cb.is_none() ? nullptr : trampoline_TpGetUserInput);
+        }, py::arg("callback"));
+
+        m.def("set_on_tp_progress", [](py::object cb) {
+            g_onTpProgress = cb.is_none() ? nullptr : cb.cast<std::function<void(LPMESSAGE_PROGRESS)>>();
+            DRAFramework::TOnTpProgressCB(cb.is_none() ? nullptr : trampoline_TpProgress);
+        }, py::arg("callback"));
+
+        m.def("set_on_rt_monitoring_data", [](py::object cb) {
+            g_onRTMonitoringData = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPRT_OUTPUT_DATA_LIST)>>();
+            DRAFramework::TOnRTMonitoringDataCB(cb.is_none() ? nullptr : trampoline_RTMonitoringData);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_safety_state", [](py::object cb) {
+            g_onMonitoringSafetyState = cb.is_none() ? nullptr : cb.cast<std::function<void(const SAFETY_STATE)>>();
+            DRAFramework::TOnMonitoringSafetyStateCB(cb.is_none() ? nullptr : trampoline_MonitoringSafetyState);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_robot_system", [](py::object cb) {
+            g_onMonitoringRobotSystem = cb.is_none() ? nullptr : cb.cast<std::function<void(const ROBOT_SYSTEM)>>();
+            DRAFramework::TOnMonitoringRobotSystemCB(cb.is_none() ? nullptr : trampoline_MonitoringRobotSystem);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_safety_stop_type", [](py::object cb) {
+            g_onMonitoringSafetyStopType = cb.is_none() ? nullptr : cb.cast<std::function<void(unsigned char)>>();
+            DRAFramework::TOnMonitoringSafetyStopTypeCB(cb.is_none() ? nullptr : trampoline_MonitoringSafetyStopType);
+        }, py::arg("callback"), "Stop type is delivered as a Python int (0-255).");
+
+        m.def("set_on_monitoring_welding_data", [](py::object cb) {
+            g_onMonitoringWeldingData = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPROBOT_WELDING_DATA)>>();
+            DRAFramework::TOnMonitoringWeldingDataCB(cb.is_none() ? nullptr : trampoline_MonitoringWeldingData);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_analog_welding_data", [](py::object cb) {
+            g_onMonitoringAnalogWeldingData = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_ALALOG_WELDING)>>();
+            DRAFramework::TOnMonitoringAnalogWeldingDataCB(cb.is_none() ? nullptr : trampoline_MonitoringAnalogWeldingData);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_digital_welding_data", [](py::object cb) {
+            g_onMonitoringDigitalWeldingData = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_DIGITAL_WELDING)>>();
+            DRAFramework::TOnMonitoringDigitalWeldingDataCB(cb.is_none() ? nullptr : trampoline_MonitoringDigitalWeldingData);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_state", [](py::object cb) {
+            g_onMonitoringState = cb.is_none() ? nullptr : cb.cast<std::function<void(const ROBOT_STATE)>>();
+            DRAFramework::TOnMonitoringStateCB(cb.is_none() ? nullptr : trampoline_MonitoringState);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_data", [](py::object cb) {
+            g_onMonitoringData = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_DATA)>>();
+            DRAFramework::TOnMonitoringDataCB(cb.is_none() ? nullptr : trampoline_MonitoringData);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_ctrl_io", [](py::object cb) {
+            g_onMonitoringCtrlIO = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_CTRLIO)>>();
+            DRAFramework::TOnMonitoringCtrlIOCB(cb.is_none() ? nullptr : trampoline_MonitoringCtrlIO);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_modbus", [](py::object cb) {
+            g_onMonitoringModbus = cb.is_none() ? nullptr : cb.cast<std::function<void(const LPMONITORING_MODBUS)>>();
+            DRAFramework::TOnMonitoringModbusCB(cb.is_none() ? nullptr : trampoline_MonitoringModbus);
+        }, py::arg("callback"));
+
+        m.def("set_on_log_alarm", [](py::object cb) {
+            g_onLogAlarm = cb.is_none() ? nullptr : cb.cast<std::function<void(LPLOG_ALARM)>>();
+            DRAFramework::TOnLogAlarmCB(cb.is_none() ? nullptr : trampoline_LogAlarm);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_access_control", [](py::object cb) {
+            g_onMonitoringAccessControl = cb.is_none() ? nullptr : cb.cast<std::function<void(const MONITORING_ACCESS_CONTROL)>>();
+            DRAFramework::TOnMonitoringAccessControlCB(cb.is_none() ? nullptr : trampoline_MonitoringAccessControl);
+        }, py::arg("callback"));
+
+        // No-argument callbacks
+        m.def("set_on_homming_completed", [](py::object cb) {
+            g_onHommingCompleted = cb.is_none() ? nullptr : cb.cast<std::function<void()>>();
+            DRAFramework::TOnHommingCompletedCB(cb.is_none() ? nullptr : trampoline_HommingCompleted);
+        }, py::arg("callback"));
+
+        m.def("set_on_tp_initializing_completed", [](py::object cb) {
+            g_onTpInitializingCompleted = cb.is_none() ? nullptr : cb.cast<std::function<void()>>();
+            DRAFramework::TOnTpInitializingCompletedCB(cb.is_none() ? nullptr : trampoline_TpInitializingCompleted);
+        }, py::arg("callback"));
+
+        m.def("set_on_program_stopped", [](py::object cb) {
+            g_onProgramStopped = cb.is_none() ? nullptr : cb.cast<std::function<void(const PROGRAM_STOP_CAUSE)>>();
+            DRAFramework::TOnProgramStoppedCB(cb.is_none() ? nullptr : trampoline_ProgramStopped);
+        }, py::arg("callback"));
+
+        m.def("set_on_monitoring_speed_mode", [](py::object cb) {
+            g_onMonitoringSpeedMode = cb.is_none() ? nullptr : cb.cast<std::function<void(const MONITORING_SPEED)>>();
+            DRAFramework::TOnMonitoringSpeedModeCB(cb.is_none() ? nullptr : trampoline_MonitoringSpeedMode);
+        }, py::arg("callback"));
+
+        m.def("set_on_mastering_need", [](py::object cb) {
+            g_onMasteringNeed = cb.is_none() ? nullptr : cb.cast<std::function<void()>>();
+            DRAFramework::TOnMasteringNeedCB(cb.is_none() ? nullptr : trampoline_MasteringNeed);
+        }, py::arg("callback"));
+
+        m.def("set_on_disconnected", [](py::object cb) {
+            g_onDisconnected = cb.is_none() ? nullptr : cb.cast<std::function<void()>>();
+            DRAFramework::TOnDisconnectedCB(cb.is_none() ? nullptr : trampoline_Disconnected);
+        }, py::arg("callback"));
 
     /***********
      * STRUCTS *
