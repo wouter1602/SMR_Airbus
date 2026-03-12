@@ -294,6 +294,146 @@ PYBIND11_MODULE(doosan_drfl, m){
         .value("torque", CONTROL_MODE::CONTROL_MODE_TORQUE)
         .export_values();
 
+    // Enum for datatype
+    py::enum_<DATA_TYPE>(m, "DATA_TYPE")
+        .value("Bool", DATA_TYPE::DATA_TYPE_BOOL)
+        .value("Int", DATA_TYPE::DATA_TYPE_INT)
+        .value("Float", DATA_TYPE::DATA_TYPE_FLOAT)
+        .value("String", DATA_TYPE::DATA_TYPE_STRING)
+        .value("PosJ", DATA_TYPE::DATA_TYPE_POSJ)
+        .value("PosX", DATA_TYPE::DATA_TYPE_POSX)
+        .value("Unknown", DATA_TYPE::DATA_TYPE_UNKNOWN)
+        .export_values();
+
+    // Enum for variable type
+    py::enum_<VARIABLE_TYPE>(m, "VARIABLE_TYPE")
+        .value("Install", VARIABLE_TYPE::VARIABLE_TYPE_INSTALL)
+        .value("Global", VARIABLE_TYPE::VARIABLE_TYPE_GLOBAL)
+        .export_values();
+
+    // Enum for sub program
+    py::enum_<SUB_PROGRAM>(m, "SUB_PROGRAM")
+        .value("Delete", SUB_PROGRAM::SUB_PROGRAM_DELETE)
+        .value("Save", SUB_PROGRAM::SUB_PROGRAM_SAVE)
+        .export_values();
+
+    // Enum for singularity avoidance
+    py::enum_<SINGULARITY_AVOIDANCE>(m, "SINGULARITY_AVOIDANCE")
+        .value("Avoid", SINGULARITY_AVOIDANCE::SINGULARITY_AVOIDANCE_AVOID)
+        .value("Stop", SINGULARITY_AVOIDANCE::SINGULARITY_AVOIDANCE_STOP)
+        .value("Vel", SINGULARITY_AVOIDANCE::SINGULARITY_AVOIDANCE_VEL)
+        .export_values();
+
+    // Enum to set log level
+    py::enum_<MESSAGE_LEVEL>(m, "MESSAGE_LEVEL")
+        .value("Info", MESSAGE_LEVEL::MESSAGE_LEVEL_INFO)
+        .value("Warn", MESSAGE_LEVEL::MESSAGE_LEVEL_WARN)
+        .value("Alarm", MESSAGE_LEVEL::MESSAGE_LEVEL_ALARM)
+        .export_values();
+
+    // Enum to set pop up responce
+    py::enum_<POPUP_RESPONSE>(m, "POPUP_RESPONSE")
+        .value("Stop", POPUP_RESPONSE::POPUP_RESPONSE_STOP)
+        .value("Resume", POPUP_RESPONSE::POPUP_RESPONSE_RESUME)
+        .export_values();
+
+    // Enum to move home
+    py::enum_<MOVE_HOME>(m, "MOVE_HOME")
+        .value("Mechanic", MOVE_HOME::MOVE_HOME_MECHANIC)
+        .value("User", MOVE_HOME::MOVE_HOME_USER)
+        .export_values();
+
+    // Enum about the byte size
+    py::enum_<BYTE_SIZE>(m, "BYTE_SIZE")
+        .value("FiveBites", BYTE_SIZE::BYTE_SIZE_FIVEBITES)
+        .value("SixBites", BYTE_SIZE::BYTE_SIZE_SIXBITS)
+        .value("SevenBites", BYTE_SIZE::BYTE_SIZE_SEVENBITS)
+        .value("EightBites", BYTE_SIZE::BYTE_SIZE_EIGHTBITS)
+        .export_values();
+
+    // Enum to set stopbits for serial communication
+    py::enum_<STOP_BITS>(m, "STOP_BITS")
+        .value("One", STOP_BITS::STOPBITS_ONE)
+        .value("Two", STOP_BITS::STOPBITS_TWO)
+        .export_values();
+
+    // Enum to set parity for serial communication
+    py::enum_<PARITY_CHECK>(m, "PARITY_CHECK")
+        .value("none", PARITY_CHECK::PARITY_CHECK_NONE)
+        .value("even", PARITY_CHECK::PARITY_CHECK_EVEN)
+        .value("odd", PARITY_CHECK::PARITY_CHECK_ODD)
+        .export_values();
+
+    // Enum to set release mode
+    py::enum_<RELEASE_MODE>(m, "RELEASE_MODE")
+        .value("Stop", RELEASE_MODE::RELEASE_MODE_STOP)
+        .value("Resume", RELEASE_MODE::RELEASE_MODE_RESUME)
+        .value("Release", RELEASE_MODE::RELEASE_MODE_RELEASE)
+        .value("Reset", RELEASE_MODE::RELEASE_MODE_RESET)
+        .export_values();
+
+    // Enum to set safety mode
+    py::enum_<SAFETY_MODE>(m, "SAFETY_MODE")
+        .value("Manual", SAFETY_MODE::SAFETY_MODE_MANUAL)
+        .value("Autonomous", SAFETY_MODE::SAFETY_MODE_AUTONOMOUS)
+        .value("Recovery", SAFETY_MODE::SAFETY_MODE_RECOVERY)
+        .value("Backdrive", SAFETY_MODE::SAFETY_MODE_BACKDRIVE)
+        .value("Measure", SAFETY_MODE::SAFETY_MODE_MEASURE)
+        .value("Initialize", SAFETY_MODE::SAFETY_MODE_INITIALIZE)
+        .value("Last", SAFETY_MODE::SAFETY_MODE_LAST)
+        .export_values();
+
+    // Enum to get safety state
+    py::enum_<SAFETY_STATE>(m, "SAFETY_STATE")
+        .value("BP_start", SAFETY_STATE::SAFETY_STATE_BP_START)
+        .value("BP_init", SAFETY_STATE::SAFETY_STATE_BP_INIT)
+        .value("VD_STO", SAFETY_STATE::SAFETY_STATE_VD_STO)
+        .value("VD_SOS", SAFETY_STATE::SAFETY_STATE_VD_SOS)
+        .value("JH_SOS", SAFETY_STATE::SAFETY_STATE_JH_SOS)
+        .value("JH_MOVE", SAFETY_STATE::SAFETY_STATE_JH_MOVE)
+        .value("HG_MOVE", SAFETY_STATE::SAFETY_STATE_HG_MOVE)
+        .value("RV_SOS", SAFETY_STATE::SAFETY_STATE_RV_SOS)
+        .value("RV_MOVE", SAFETY_STATE::SAFETY_STATE_RV_MOVE)
+        .value("RV_BACK", SAFETY_STATE::SAFETY_STATE_RV_BACK)
+        .value("RV_HG_MOVE", SAFETY_STATE::SAFETY_STATE_RV_HG_MOVE)
+        .value("SW_SOS", SAFETY_STATE::SAFETY_STATE_SW_SOS)
+        .value("SW_RUN", SAFETY_STATE::SAFETY_STATE_SW_RUN)
+        .value("CW_SOS", SAFETY_STATE::SAFETY_STATE_CW_SOS)
+        .value("CW_RUN", SAFETY_STATE::SAFETY_STATE_CW_RUN)
+        .value("CM_RUN", SAFETY_STATE::SAFETY_STATE_CM_RUN)
+        .value("AM_RUN", SAFETY_STATE::SAFETY_STATE_AM_RUN)
+        .value("DRL_JH_SOS", SAFETY_STATE::SAFETY_STATE_DRL_JH_SOS)
+        .value("DRL_HG_MOVE", SAFETY_STATE::SAFETY_STATE_DRL_HG_MOVE)
+        .value("Last", SAFETY_STATE::SAFETY_STATE_LAST)
+        .export_values();
+
+    // Enum to get safety mode event
+    py::enum_<SAFETY_MODE_EVENT>(m, "SAFETY_MODE_EVENT")
+        .value("Enter", SAFETY_MODE_EVENT::SAFETY_MODE_EVENT_ENTER)
+        .value("Move", SAFETY_MODE_EVENT::SAFETY_MODE_EVENT_MOVE)
+        .value("Stop", SAFETY_MODE_EVENT::SAFETY_MODE_EVENT_STOP)
+        .value("Last", SAFETY_MODE_EVENT::SAFETY_MODE_EVENT_LAST)
+        .export_values();
+
+    // Enum to set COG reference
+    py::enum_<COG_REFERENCE>(m, "COG_REFERENCE")
+        .value("TCP", COG_REFERENCE::COG_REFERENCE_TCP)
+        .value("Flange", COG_REFERENCE::COG_REFERENCE_FLANGE)
+        .export_values();
+
+    // Enum to indicat the state of the workpiece of the flange
+    py::enum_<ADD_UP>(m, "ADD_UP")
+        .value("Replace", ADD_UP::ADD_UP_REPLACE)
+        .value("Add", ADD_UP::ADD_UP_ADD)
+        .value("Remove", ADD_UP::ADD_UP_REMOVE)
+        .export_values();
+
+    // Enum to set output type
+    py::enum_<OUTPUT_TYPE>(m, "OUTPUT_TYPE")
+        .value("PNP", OUTPUT_TYPE::OUTPUT_TYPE_PNP)
+        .value("NPN", OUTPUT_TYPE::OUTPUT_TYPE_NPN)
+        .export_values();
+
     /**************
      * ATTRABUTES *
      **************/
