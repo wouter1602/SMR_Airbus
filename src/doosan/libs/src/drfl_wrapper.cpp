@@ -1829,6 +1829,263 @@ PYBIND11_MODULE(doosan_drfl, m){
         .def(py::init<>())
         ARRAY_PROP(LOCAL_ZONE_PROPERTY_JOINT_SPEED, _iOverride, unsigned char)
         ARRAY_PROP(LOCAL_ZONE_PROPERTY_JOINT_SPEED, _fSpeed, float);
+
+    //bind the CDRFLEx class
+    py::class_<DRAFramework::CDRFLEx>(m, "CDRFLEx")
+        .def(py::init<>()) // Binds the default constructor
+        .def("open_connection", &DRAFramework::CDRFLEx::open_connection,
+            py::arg("ip"), py::arg("port") = 12345,
+            "Connect to the Doosan robot controller")
+
+        // Close made connection
+        .def("close_connection", &DRAFramework::CDRFLEx::close_connection,
+            "Disconnect the Doosan robot controller")
+
+        // Set control mode of the robot
+        .def("manage_access_control", &DRAFramework::CDRFLEx::manage_access_control,
+                py::arg("access_control"),
+                "Manage acces control")
+
+        /*****************
+         * GET FUNCTIONS *
+         *****************/
+        // Get robot state.
+        .def("get_robot_state", &DRAFramework::CDRFLEx::get_robot_state,
+                 "Retrieve the current state of the robot")
+
+        // Get system version
+        .def("get_system_version", &DRAFramework::CDRFLEx::get_system_version,
+            py::arg("pVersion"),
+            "Retrieve the system version")
+
+        // Get library version
+        .def("get_library_version", &DRAFramework::CDRFLEx::get_library_version,
+            "Retrieve the library version")
+
+        // Get robot mode
+        .def("get_robot_mode", &DRAFramework::CDRFLEx::get_robot_mode,
+            "Retrieve the robot mode")
+
+        // Get robot speed mode
+        .def("get_robot_speed_mode", &DRAFramework::CDRFLEx::get_robot_speed_mode,
+            "Retrieve the robot speed mode")
+
+        // Get program state
+        .def("get_program_state", &DRAFramework::CDRFLEx::get_program_state,
+            "Retrieve the program state")
+
+        // Get robot system
+        .def("get_robot_system", &DRAFramework::CDRFLEx::get_robot_system,
+            "Retrieve the robot system")
+
+        // Get current pose
+        .def("get_current_pose", &DRAFramework::CDRFLEx::get_current_pose,
+            py::arg("space_type") = ROBOT_SPACE::ROBOT_SPACE_JOINT,
+            "Retrieve the current pose")
+
+        // Get current posj
+        .def("get_current_posj", &DRAFramework::CDRFLEx::get_current_posj,
+            "Retrieve the current pose in joint space")
+
+        // Get desired posj
+        .def("get_desired_posj", &DRAFramework::CDRFLEx::get_desired_posj,
+            "Retrieve the desired pose in joint space")
+
+        // Get current joint velocity
+        .def("get_current_velj", &DRAFramework::CDRFLEx::get_current_velj,
+            "Retrieve the current joint velocity")
+
+        // Get current pos x
+        .def("get_current_posx", &DRAFramework::CDRFLEx::get_current_posx,
+            py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
+            "Retrieve the current position in base coordinate system")
+
+        // Get desired pos x
+        .def("get_desired_posx", &DRAFramework::CDRFLEx::get_desired_posx,
+            py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
+            "Retrieve the desired position in base coordinate system")
+
+        // Get current tool flange pos x
+        .def("get_current_tool_flange_posx",
+            &DRAFramework::CDRFLEx::get_current_tool_flange_posx,
+            "Retrieve the current tool flange position in base coordinate system")
+
+        // Get current vel x
+        .def("get_current_velx", &DRAFramework::CDRFLEx::get_current_velx,
+            "Retrieve the current velocity in base coordinate system")
+
+        // Get desired vel x
+        .def("get_desired_velx", &DRAFramework::CDRFLEx::get_desired_velx,
+            "Retrieve the desired velocity in base coordinate system")
+
+        // Get joint torque
+        .def("get_joint_torque", &DRAFramework::CDRFLEx::get_joint_torque,
+            "Retrieve the joint torque")
+
+        // Get current control space
+        .def("get_control_space", &DRAFramework::CDRFLEx::get_control_space,
+            "Retrieve the current control space")
+
+        // Get external torque
+        .def("get_external_torque", &DRAFramework::CDRFLEx::get_external_torque,
+            "Retrieve the external torque")
+
+        // Get tool force
+        .def("get_tool_force", &DRAFramework::CDRFLEx::get_tool_force,
+            py::arg("target_ref") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
+            "Retrieve the tool force")
+
+        // Get current solution space
+        .def("get_current_solution_space", &DRAFramework::CDRFLEx::get_current_solution_space,
+            "Retrieve the current solution space")
+
+        // Get last alarm
+        .def("get_last_alarm", &DRAFramework::CDRFLEx::get_last_alarm,
+            "Retrieve the last alarm")
+
+        // Get solution space
+        .def("get_solution_space",
+            [](DRAFramework::CDRFLEx& self, const py::array_t<float>& target_pos) -> unsigned char {
+                // 1. Get the buffer info
+                auto buf = target_pos.request();
+
+                // 2. CRITICAL CHECK: Enforce size constraint
+                if (buf.size != NUM_JOINT) {
+                    // Raise a Python exception instead of crashing
+                    throw py::value_error(
+                        "Input array size (" + std::to_string(buf.size) +
+                        ") does not match expected NUM_JOINT (" +
+                        std::to_string(NUM_JOINT) + ")."
+                    );
+                }
+
+                    // 3. Safe to proceed now
+                    float* ptr = static_cast<float*>(buf.ptr);
+                    return self.get_solution_space(ptr);
+                },
+                py::arg("target_pos"),
+                "Function for calculating solution space")
+
+        // Get orientation error
+        .def("get_orientation_error",
+            [](DRAFramework::CDRFLEx& self,
+                const py::array_t<float>& pos1,
+                const py::array_t<float>& pos2,
+                TASK_AXIS axis) -> float {
+                    // Validate both arrays
+                    auto buf1 = pos1.request();
+                    auto buf2 = pos2.request();
+
+                    if (buf1.size != NUM_TASK) {
+                        throw py::value_error(
+                            "pos1 size (" + std::to_string(buf1.size) +
+                            ") does not match NUM_TASK (" +
+                            std::to_string(NUM_TASK) + ")"
+                        );
+                    }
+
+                    if (buf2.size != NUM_TASK) {
+                        throw py::value_error(
+                            "pos2 size (" + std::to_string(buf2.size) +
+                            ") does not match NUM_TASK (" +
+                            std::to_string(NUM_TASK) + ")"
+                        );
+                    }
+
+                    // Call original method
+                    return self.get_orientation_error(
+                        static_cast<float*>(buf1.ptr),
+                        static_cast<float*>(buf2.ptr),
+                        axis
+                    );
+                },
+            py::arg("position1"),
+            py::arg("position2"),
+            py::arg("axis"),
+            "Get the orientation error between two positions along a given axis")
+
+        // Get control mode
+        .def("get_control_mode", &DRAFramework::CDRFLEx::get_control_mode,
+            "Get the current control mode")
+
+        // get current rot matrix
+        .def("get_current_rotm",
+            [](DRAFramework::CDRFLEx& self, COORDINATE_SYSTEM eTargetRef = COORDINATE_SYSTEM_BASE) {
+                // Call the original function
+                float (*ptr)[3] = self.get_current_rotm(eTargetRef);
+
+                // Copy the data into a numpy array
+                // IMPORTANT: We copy because the original pointer may become invalid
+                py::array_t<float> result(3);
+                auto buf = result.request();
+                float* result_ptr = static_cast<float*>(buf.ptr);
+
+                // Copy 3 elements
+                for (int i = 0; i < 3; i++) {
+                    result_ptr[i] = (*ptr)[i];
+                }
+
+                return result;
+            },
+            py::arg("eTargetRef") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
+            "Get the current rotation matrix")
+
+        /*****************
+         * SET FUNCTIONS *
+         *****************/
+
+        // Set robot mode
+        .def("set_robot_mode", &DRAFramework::CDRFLEx::set_robot_mode,
+            py::arg("robot_mode"),
+            "Set the robot mode")
+
+        // Set robot control mode
+        .def("set_robot_control", &DRAFramework::CDRFLEx::set_robot_control,
+            py::arg("robot_control"),
+            "Set the robot control mode")
+
+        // Set robot system
+        .def("set_robot_system", &DRAFramework::CDRFLEx::set_robot_system,
+            py::arg("system_system"),
+            "Set the robot system version")
+
+        // Set robot speed mode
+        .def("set_robot_speed_mode", &DRAFramework::CDRFLEx::set_robot_speed_mode,
+            py::arg("speed_mode"),
+            "Set the robot speed mode")
+
+        // Set safe stop reset type
+        .def("set_safe_stop_reset_type", &DRAFramework::CDRFLEx::set_safe_stop_reset_type,
+            py::arg("reset_type") = SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT,
+            "Set the safe stop reset type")
+
+        // Example of binding a method with arguments float*, float, float, float, MOVE_MODE eMoveMode = MOVE_MODE_ABSOLUTE, float fBlendingRadius = 0.f, BLENDING_SPEED_TYPE eBlendingType = BLENDING_SPEED_TYPE_DUPLICATE
+        //
+        // float fTargetPos[NUM_JOINT],
+        // float fTargetVel,
+        // float fTargetAcc,
+        // float fTargetTime = 0.f,
+        // MOVE_MODE eMoveMode = MOVE_MODE_ABSOLUTE,
+        // float fBlendingRadius = 0.f,
+        // BLENDING_SPEED_TYPE eBlendingType = BLENDING_SPEED_TYPE_DUPLICATE
+        .def("movej", py::overload_cast<float*, float, float, float, MOVE_MODE, float, BLENDING_SPEED_TYPE>(&DRAFramework::CDRFLEx::movej),
+            py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time"), py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE, py::arg("r") = 0.0, py::arg("blend_speed_type") = BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
+            "Joint space motion")
+
+        /*
+         * Basic I/O functions
+         */
+
+        // Set ctrlbox output status
+        .def("set_digital_output", &DRAFramework::CDRFLEx::set_digital_output,
+            py::arg("GPIO_index"), py::arg("set"),
+            "Set ctrlbox output status")
+
+        // Get ctrlbox input status
+        .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
+            py::arg("GPIO_index"),
+            "Get ctrlbox output status");
+
 #define SIMPLE_OVERRIDE_FLOAT(CLS, FIELD) \
 
     py::class_<CLS>(m, #CLS) \
@@ -2340,264 +2597,4 @@ PYBIND11_MODULE(doosan_drfl, m){
             .def_readwrite("_iGprAddr", &IETHERNET_SLAVE_RESPONSE_DATA_EX::_iGprAddr)
             .def_readwrite("_iInOut",   &IETHERNET_SLAVE_RESPONSE_DATA_EX::_iInOut)
             STR_PROP(IETHERNET_SLAVE_RESPONSE_DATA_EX, _szData);
-
-    //bind the CDRFLEx class
-    py::class_<DRAFramework::CDRFLEx>(m, "CDRFLEx")
-        .def(py::init<>()) // Binds the default constructor
-
-        // Bind methods: .def("python_method_name", &CppClass::CppMethod, "Docstring")
-        // Opens intial connection
-        .def("open_connection", &DRAFramework::CDRFLEx::open_connection,
-             py::arg("ip"), py::arg("port") = 12345,
-             "Connect to the Doosan robot controller")
-
-        // Close made connection
-        .def("close_connection", &DRAFramework::CDRFLEx::close_connection,
-            "Disconnect the Doosan robot controller")
-
-        // Set control mode of the robot
-        .def("manage_access_control", &DRAFramework::CDRFLEx::manage_access_control,
-            py::arg("access_control"),
-            "Manage acces control")
-
-        /*****************
-         * GET FUNCTIONS *
-         *****************/
-        // Get robot state.
-        .def("get_robot_state", &DRAFramework::CDRFLEx::get_robot_state,
-             "Retrieve the current state of the robot")
-
-        // Get system version
-        .def("get_system_version", &DRAFramework::CDRFLEx::get_system_version,
-            py::arg("pVersion"),
-            "Retrieve the system version")
-
-        // Get library version
-        .def("get_library_version", &DRAFramework::CDRFLEx::get_library_version,
-            "Retrieve the library version")
-
-        // Get robot mode
-        .def("get_robot_mode", &DRAFramework::CDRFLEx::get_robot_mode,
-            "Retrieve the robot mode")
-
-        // Get robot speed mode
-        .def("get_robot_speed_mode", &DRAFramework::CDRFLEx::get_robot_speed_mode,
-            "Retrieve the robot speed mode")
-
-        // Get program state
-        .def("get_program_state", &DRAFramework::CDRFLEx::get_program_state,
-            "Retrieve the program state")
-
-        // Get robot system
-        .def("get_robot_system", &DRAFramework::CDRFLEx::get_robot_system,
-            "Retrieve the robot system")
-
-        // Get current pose
-        .def("get_current_pose", &DRAFramework::CDRFLEx::get_current_pose,
-            py::arg("space_type") = ROBOT_SPACE::ROBOT_SPACE_JOINT,
-            "Retrieve the current pose")
-
-        // Get current posj
-        .def("get_current_posj", &DRAFramework::CDRFLEx::get_current_posj,
-            "Retrieve the current pose in joint space")
-
-        // Get desired posj
-        .def("get_desired_posj", &DRAFramework::CDRFLEx::get_desired_posj,
-            "Retrieve the desired pose in joint space")
-
-        // Get current joint velocity
-        .def("get_current_velj", &DRAFramework::CDRFLEx::get_current_velj,
-            "Retrieve the current joint velocity")
-
-        // Get current pos x
-        .def("get_current_posx", &DRAFramework::CDRFLEx::get_current_posx,
-            py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-            "Retrieve the current position in base coordinate system")
-
-        // Get desired pos x
-        .def("get_desired_posx", &DRAFramework::CDRFLEx::get_desired_posx,
-            py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-            "Retrieve the desired position in base coordinate system")
-
-        // Get current tool flange pos x
-        .def("get_current_tool_flange_posx",
-            &DRAFramework::CDRFLEx::get_current_tool_flange_posx,
-            "Retrieve the current tool flange position in base coordinate system")
-
-        // Get current vel x
-        .def("get_current_velx", &DRAFramework::CDRFLEx::get_current_velx,
-            "Retrieve the current velocity in base coordinate system")
-
-        // Get desired vel x
-        .def("get_desired_velx", &DRAFramework::CDRFLEx::get_desired_velx,
-            "Retrieve the desired velocity in base coordinate system")
-
-        // Get joint torque
-        .def("get_joint_torque", &DRAFramework::CDRFLEx::get_joint_torque,
-            "Retrieve the joint torque")
-
-        // Get current control space
-        .def("get_control_space", &DRAFramework::CDRFLEx::get_control_space,
-            "Retrieve the current control space")
-
-        // Get external torque
-        .def("get_external_torque", &DRAFramework::CDRFLEx::get_external_torque,
-            "Retrieve the external torque")
-
-        // Get tool force
-        .def("get_tool_force", &DRAFramework::CDRFLEx::get_tool_force,
-            py::arg("target_ref") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-            "Retrieve the tool force")
-
-        // Get current solution space
-        .def("get_current_solution_space", &DRAFramework::CDRFLEx::get_current_solution_space,
-            "Retrieve the current solution space")
-
-        // Get last alarm
-        .def("get_last_alarm", &DRAFramework::CDRFLEx::get_last_alarm,
-            "Retrieve the last alarm")
-
-        // Get solution space
-        .def("get_solution_space",
-            [](DRAFramework::CDRFLEx& self, const py::array_t<float>& target_pos) -> unsigned char {
-                // 1. Get the buffer info
-                auto buf = target_pos.request();
-
-                // 2. CRITICAL CHECK: Enforce size constraint
-                if (buf.size != NUM_JOINT) {
-                    // Raise a Python exception instead of crashing
-                    throw py::value_error(
-                        "Input array size (" + std::to_string(buf.size) +
-                        ") does not match expected NUM_JOINT (" +
-                        std::to_string(NUM_JOINT) + ")."
-                    );
-                }
-
-                // 3. Safe to proceed now
-                float* ptr = static_cast<float*>(buf.ptr);
-                return self.get_solution_space(ptr);
-            },
-            py::arg("target_pos"),
-            "Function for calculating solution space")
-
-        // Get orientation error
-        .def("get_orientation_error",
-            [](DRAFramework::CDRFLEx& self,
-                const py::array_t<float>& pos1,
-                const py::array_t<float>& pos2,
-                TASK_AXIS axis) -> float {
-                // Validate both arrays
-                auto buf1 = pos1.request();
-                auto buf2 = pos2.request();
-
-                if (buf1.size != NUM_TASK) {
-                    throw py::value_error(
-                        "pos1 size (" + std::to_string(buf1.size) +
-                        ") does not match NUM_TASK (" +
-                        std::to_string(NUM_TASK) + ")"
-                    );
-                }
-
-                if (buf2.size != NUM_TASK) {
-                    throw py::value_error(
-                        "pos2 size (" + std::to_string(buf2.size) +
-                        ") does not match NUM_TASK (" +
-                        std::to_string(NUM_TASK) + ")"
-                    );
-                }
-
-                // Call original method
-                return self.get_orientation_error(
-                    static_cast<float*>(buf1.ptr),
-                    static_cast<float*>(buf2.ptr),
-                    axis
-                );
-            },
-            py::arg("position1"),
-            py::arg("position2"),
-            py::arg("axis"),
-            "Get the orientation error between two positions along a given axis")
-
-        // Get control mode
-        .def("get_control_mode", &DRAFramework::CDRFLEx::get_control_mode,
-            "Get the current control mode")
-
-        // get current rot matrix
-        .def("get_current_rotm",
-            [](DRAFramework::CDRFLEx& self, COORDINATE_SYSTEM eTargetRef = COORDINATE_SYSTEM_BASE) {
-                // Call the original function
-                float (*ptr)[3] = self.get_current_rotm(eTargetRef);
-
-                // Copy the data into a numpy array
-                // IMPORTANT: We copy because the original pointer may become invalid
-                py::array_t<float> result(3);
-                auto buf = result.request();
-                float* result_ptr = static_cast<float*>(buf.ptr);
-
-                // Copy 3 elements
-                for (int i = 0; i < 3; i++) {
-                    result_ptr[i] = (*ptr)[i];
-                }
-
-                return result;
-            },
-            py::arg("eTargetRef") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-            "Get the current rotation matrix")
-
-        /*****************
-         * SET FUNCTIONS *
-         *****************/
-
-        // Set robot mode
-        .def("set_robot_mode", &DRAFramework::CDRFLEx::set_robot_mode,
-            py::arg("robot_mode"),
-            "Set the robot mode")
-
-        // Set robot control mode
-        .def("set_robot_control", &DRAFramework::CDRFLEx::set_robot_control,
-            py::arg("robot_control"),
-            "Set the robot control mode")
-
-        // Set robot system
-        .def("set_robot_system", &DRAFramework::CDRFLEx::set_robot_system,
-            py::arg("system_system"),
-            "Set the robot system version")
-
-        // Set robot speed mode
-        .def("set_robot_speed_mode", &DRAFramework::CDRFLEx::set_robot_speed_mode,
-            py::arg("speed_mode"),
-            "Set the robot speed mode")
-
-        // Set safe stop reset type
-        .def("set_safe_stop_reset_type", &DRAFramework::CDRFLEx::set_safe_stop_reset_type,
-            py::arg("reset_type") = SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT,
-            "Set the safe stop reset type")
-
-        // Example of binding a method with arguments float*, float, float, float, MOVE_MODE eMoveMode = MOVE_MODE_ABSOLUTE, float fBlendingRadius = 0.f, BLENDING_SPEED_TYPE eBlendingType = BLENDING_SPEED_TYPE_DUPLICATE
-        //
-        // float fTargetPos[NUM_JOINT],
-        // float fTargetVel,
-        // float fTargetAcc,
-        // float fTargetTime = 0.f,
-        // MOVE_MODE eMoveMode = MOVE_MODE_ABSOLUTE,
-        // float fBlendingRadius = 0.f,
-        // BLENDING_SPEED_TYPE eBlendingType = BLENDING_SPEED_TYPE_DUPLICATE
-        .def("movej", py::overload_cast<float*, float, float, float, MOVE_MODE, float, BLENDING_SPEED_TYPE>(&DRAFramework::CDRFLEx::movej),
-             py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time"), py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE, py::arg("r") = 0.0, py::arg("blend_speed_type") = BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-             "Joint space motion")
-
-        /*
-         * Basic I/O functions
-         */
-
-        // Set ctrlbox output status
-        .def("set_digital_output", &DRAFramework::CDRFLEx::set_digital_output,
-            py::arg("GPIO_index"), py::arg("set"),
-            "Set ctrlbox output status")
-
-        // Get ctrlbox input status
-        .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
-            py::arg("GPIO_index"),
-            "Get ctrlbox output status");
-
 }
