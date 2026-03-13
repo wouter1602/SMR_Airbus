@@ -29,6 +29,8 @@ def main():
 
         time.sleep(5)
 
+        status= robot.move_home()
+
         status = robot.set_digital_output(doosan_drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, True)
 
         print(f"Io status: {status}")

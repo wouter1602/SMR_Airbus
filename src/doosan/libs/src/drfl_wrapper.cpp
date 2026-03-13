@@ -2390,6 +2390,18 @@ PYBIND11_MODULE(doosan_drfl, m){
             py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time"), py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE, py::arg("r") = 0.0, py::arg("blend_speed_type") = BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
             "Joint space motion")
 
+        //bool jog(
+        // JOG_AXIS eJogAxis,
+        // MOVE_REFERENCE eMoveReference,
+        // float fVelocity)
+        .def("jog", py::overload_cast<JOG_AXIS, MOVE_REFERENCE, float>(&DRAFramework::CDRFLEx::jog),
+            py::arg("axis"), py::arg("reference"), py::arg("velocity"),
+            "Jog motion")
+
+        .def("move_home", &DRAFramework::CDRFLEx::move_home,
+            py::arg("mode") = MOVE_HOME::MOVE_HOME_MECHANIC, py::arg("run") = (unsigned char)1,
+            "Move home")
+
         /*
          * Basic I/O functions
          */
