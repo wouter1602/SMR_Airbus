@@ -3,6 +3,7 @@
 #define DRCF_VERSION 2
 
 #include "../API-DRFL/include/DRFL.h"
+#include "./cdrflex_bindings.hpp"
 #include <cstring>
 #include <pybind11/functional.h>
 #include <pybind11/numpy.h>
@@ -3279,7 +3280,7 @@ PYBIND11_MODULE(doosan_drfl, m) {
           STR_PROP(IETHERNET_SLAVE_RESPONSE_DATA_EX, _szData);
 
   // bind the CDRFLEx class
-  py::class_<DRAFramework::CDRFLEx>(m, "CDRFLEx")
+  py::class_<DRAFramework::CDRFLEx> (m, "CDRFLEx")
       .def(py::init<>()) // Binds the default constructor
       .def("open_connection", &DRAFramework::CDRFLEx::open_connection,
            py::arg("ip"), py::arg("port") = 12345,
@@ -4372,28 +4373,33 @@ PYBIND11_MODULE(doosan_drfl, m) {
           },
           py::arg("fTargetVel"), py::arg("fTargetAcc"), py::arg("fTargetTime"))
 
-  // bool jog(
-  //  JOG_AXIS eJogAxis,
-  //  MOVE_REFERENCE eMoveReference,
-  //  float fVelocity)
-  .def("jog",
-       py::overload_cast<JOG_AXIS, MOVE_REFERENCE, float>(
-           &DRAFramework::CDRFLEx::jog),
-       py::arg("axis"), py::arg("reference"), py::arg("velocity"), "Jog motion")
+      // bool jog(
+      //  JOG_AXIS eJogAxis,
+      //  MOVE_REFERENCE eMoveReference,
+      //  float fVelocity)
+      .def("jog",
+          py::overload_cast<JOG_AXIS, MOVE_REFERENCE, float>(
+              &DRAFramework::CDRFLEx::jog),
+          py::arg("axis"), py::arg("reference"), py::arg("velocity"), "Jog motion")
 
-      .def("move_home", &DRAFramework::CDRFLEx::move_home,
-           py::arg("mode") = MOVE_HOME::MOVE_HOME_MECHANIC,
-           py::arg("run") = (unsigned char)1, "Move home")
+        .def("move_home", &DRAFramework::CDRFLEx::move_home,
+            py::arg("mode") = MOVE_HOME::MOVE_HOME_MECHANIC,
+            py::arg("run") = (unsigned char)1, "Move home")
 
-      /*
-       * Basic I/O functions
-       */
+        /*
+            * Basic I/O functions
+            */
 
-      // Set ctrlbox output status
-      .def("set_digital_output", &DRAFramework::CDRFLEx::set_digital_output,
+        // Set ctrlbox output status
+        .def("set_digital_output", &DRAFramework::CDRFLEx::set_digital_output,
            py::arg("GPIO_index"), py::arg("set"), "Set ctrlbox output status")
 
-      // Get ctrlbox input status
-      .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
-           py::arg("GPIO_index"), "Get ctrlbox output status");
+        // Get ctrlbox input status
+        .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
+            py::arg("GPIO_index"), "Get ctrlbox output status");
+
+    py::class_<DRAFramework::CDRFLEx> c(m, "tmp_5");
+    c.def(py::init<>());
+    bOpenConnection(c);
+    bCloseConnection(c);
 }

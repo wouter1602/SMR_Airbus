@@ -173,7 +173,8 @@ except Exception as e:
 ext_modules = [
     Extension(
         'doosan_drfl',                      # Name of the generated Python module
-        ['../libs/src/drfl_wrapper.cpp'],                # Your pybind11 C++ file
+        ['../libs/src/drfl_wrapper.cpp',
+         '../libs/src/cdrflex_bindings.cpp'],                # Your pybind11 C++ file
         include_dirs=[
             pybind11.get_include(),
             '../libs/API-DRFL/include'            # Path to Doosan DRFL.h
