@@ -1,5 +1,4 @@
 #include <pybind11/cast.h>
-#include <utility>
 #define DRCF_VERSION 2
 
 #include "../API-DRFL/include/DRFL.h"
@@ -14,24 +13,6 @@
 //
 namespace py = pybind11;
 using arr_f = py::array_t<float, py::array::c_style | py::array::forcecast>;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CDRFLEx instance management
-//
-// All set_on_*() functions are methods of CDRFLEx, so every registration call
-// needs a live instance. Python passes in the pointer (obtained from wherever
-// it constructs/receives the CDRFLEx object) via set_robot_instance().
-// ─────────────────────────────────────────────────────────────────────────────
-
-static DRAFramework::CDRFLEx *g_robot = nullptr;
-
-static DRAFramework::CDRFLEx &get_robot() {
-  if (!g_robot)
-    throw std::runtime_error("No CDRFLEx instance set. "
-                             "Call robot_callbacks.set_robot_instance(robot) "
-                             "before registering callbacks.");
-  return *g_robot;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: make a NumPy array that is a *copy* of a fixed-size C array member.
@@ -125,194 +106,6 @@ void array2d_set(T (&arr)[R][C], py::array_t<T> src) {
         s.member[sizeof(s.member) - 1] = '\0';                                 \
       })
 
-/* Callback defines */
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Global callback storage
-//
-// The SDK stores a raw C function pointer internally. The Python callable must
-// be kept alive on the C++ side — each global std::function owns that lifetime.
-// ─────────────────────────────────────────────────────────────────────────────
-
-static std::function<void(const ROBOT_STATE)> g_onMonitoringState;
-static std::function<void(const LPMONITORING_DATA)> g_onMonitoringData;
-static std::function<void(const LPMONITORING_CTRLIO)> g_onMonitoringCtrlIO;
-static std::function<void(const LPMONITORING_CTRLIO_EX)> g_onMonitoringCtrlIOEx;
-static std::function<void(const LPROBOT_WELDING_DATA)>
-    g_onMonitoringWeldingData;
-static std::function<void(const LPMONITORING_ALALOG_WELDING)>
-    g_onMonitoringAnalogWeldingData;
-static std::function<void(const LPMONITORING_DIGITAL_WELDING)>
-    g_onMonitoringDigitalWeldingData;
-static std::function<void(const LPMONITORING_MODBUS)> g_onMonitoringModbus;
-static std::function<void(const MONITORING_SPEED)> g_onMonitoringSpeedMode;
-static std::function<void(const MONITORING_ACCESS_CONTROL)>
-    g_onMonitoringAccessControl;
-static std::function<void(LPLOG_ALARM)> g_onLogAlarm;
-static std::function<void(LPMESSAGE_POPUP)> g_onTpPopup;
-static std::function<void(const std::string &)>
-    g_onTpLog; // char[256] -> std::string
-static std::function<void(LPMESSAGE_PROGRESS)> g_onTpProgress;
-static std::function<void(LPMESSAGE_INPUT)> g_onTpGetUserInput;
-static std::function<void()> g_onHommingCompleted;
-static std::function<void()> g_onTpInitializingCompleted;
-static std::function<void()> g_onMasteringNeed;
-static std::function<void(const PROGRAM_STOP_CAUSE)> g_onProgramStopped;
-static std::function<void()> g_onDisconnected;
-static std::function<void(const SAFETY_STATE)> g_onMonitoringSafetyState;
-static std::function<void(const ROBOT_SYSTEM)> g_onMonitoringRobotSystem;
-static std::function<void(unsigned char)> g_onMonitoringSafetyStopType;
-static std::function<void(const LPRT_OUTPUT_DATA_LIST)> g_onRTMonitoringData;
-static std::function<void(LPLOG_ALARM)> g_onRtLogAlarm;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Trampoline functions
-//
-// Plain static C functions (no captures) satisfy the raw C typedef signatures
-// CDRFLEx expects, and forward into the stored std::functions.
-// ─────────────────────────────────────────────────────────────────────────────
-
-static void trampoline_MonitoringState(const ROBOT_STATE s) {
-  if (g_onMonitoringState)
-    g_onMonitoringState(s);
-}
-
-static void trampoline_MonitoringData(const LPMONITORING_DATA d) {
-  if (g_onMonitoringData)
-    g_onMonitoringData(d);
-}
-
-static void trampoline_MonitoringCtrlIO(const LPMONITORING_CTRLIO d) {
-  if (g_onMonitoringCtrlIO)
-    g_onMonitoringCtrlIO(d);
-}
-
-static void trampoline_MonitoringCtrlIOEx(const LPMONITORING_CTRLIO_EX d) {
-  if (g_onMonitoringCtrlIOEx)
-    g_onMonitoringCtrlIOEx(d);
-}
-
-static void trampoline_MonitoringWeldingData(const LPROBOT_WELDING_DATA d) {
-  if (g_onMonitoringWeldingData)
-    g_onMonitoringWeldingData(d);
-}
-
-static void
-trampoline_MonitoringAnalogWeldingData(const LPMONITORING_ALALOG_WELDING d) {
-  if (g_onMonitoringAnalogWeldingData)
-    g_onMonitoringAnalogWeldingData(d);
-}
-
-static void
-trampoline_MonitoringDigitalWeldingData(const LPMONITORING_DIGITAL_WELDING d) {
-  if (g_onMonitoringDigitalWeldingData)
-    g_onMonitoringDigitalWeldingData(d);
-}
-
-static void trampoline_MonitoringModbus(const LPMONITORING_MODBUS d) {
-  if (g_onMonitoringModbus)
-    g_onMonitoringModbus(d);
-}
-
-static void trampoline_MonitoringSpeedMode(const MONITORING_SPEED s) {
-  if (g_onMonitoringSpeedMode)
-    g_onMonitoringSpeedMode(s);
-}
-
-static void
-trampoline_MonitoringAccessControl(const MONITORING_ACCESS_CONTROL c) {
-  if (g_onMonitoringAccessControl)
-    g_onMonitoringAccessControl(c);
-}
-
-static void trampoline_LogAlarm(LPLOG_ALARM d) {
-  if (g_onLogAlarm)
-    g_onLogAlarm(d);
-}
-
-static void trampoline_TpPopup(LPMESSAGE_POPUP d) {
-  if (g_onTpPopup)
-    g_onTpPopup(d);
-}
-
-// char[256] cannot pass through pybind11 -- convert at the trampoline boundary.
-static void trampoline_TpLog(const char msg[256]) {
-  if (g_onTpLog)
-    g_onTpLog(std::string(msg, strnlen(msg, 256)));
-}
-
-static void trampoline_TpProgress(LPMESSAGE_PROGRESS d) {
-  if (g_onTpProgress)
-    g_onTpProgress(d);
-}
-
-static void trampoline_TpGetUserInput(LPMESSAGE_INPUT d) {
-  if (g_onTpGetUserInput)
-    g_onTpGetUserInput(d);
-}
-
-static void trampoline_HommingCompleted() {
-  if (g_onHommingCompleted)
-    g_onHommingCompleted();
-}
-
-static void trampoline_TpInitializingCompleted() {
-  if (g_onTpInitializingCompleted)
-    g_onTpInitializingCompleted();
-}
-
-static void trampoline_MasteringNeed() {
-  if (g_onMasteringNeed)
-    g_onMasteringNeed();
-}
-
-static void trampoline_ProgramStopped(const PROGRAM_STOP_CAUSE c) {
-  if (g_onProgramStopped)
-    g_onProgramStopped(c);
-}
-
-static void trampoline_Disconnected() {
-  if (g_onDisconnected)
-    g_onDisconnected();
-}
-
-static void trampoline_MonitoringSafetyState(const SAFETY_STATE s) {
-  if (g_onMonitoringSafetyState)
-    g_onMonitoringSafetyState(s);
-}
-
-static void trampoline_MonitoringRobotSystem(const ROBOT_SYSTEM s) {
-  if (g_onMonitoringRobotSystem)
-    g_onMonitoringRobotSystem(s);
-}
-
-static void trampoline_MonitoringSafetyStopType(const unsigned char t) {
-  if (g_onMonitoringSafetyStopType)
-    g_onMonitoringSafetyStopType(t);
-}
-
-static void trampoline_RTMonitoringData(const LPRT_OUTPUT_DATA_LIST d) {
-  if (g_onRTMonitoringData)
-    g_onRTMonitoringData(d);
-}
-
-static void trampoline_RtLogAlarm(LPLOG_ALARM d) {
-  if (g_onRtLogAlarm)
-    g_onRtLogAlarm(d);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper macro
-//
-//   REGISTER(g_global, method_name, trampoline, CastType)
-//
-// Stores the Python callable in the global std::function, then calls the
-// matching CDRFLEx method on the managed instance to register the trampoline.
-// ─────────────────────────────────────────────────────────────────────────────
-
-#define REGISTER(global, method, trampoline, CastType)                         \
-  global = cb.is_none() ? nullptr : cb.cast<std::function<CastType>>();        \
-  get_robot().method(cb.is_none() ? nullptr : trampoline)
 
 PYBIND11_MODULE(doosan_drfl, m) {
   m.doc() = "Python binding for Doosan Robotics API-DRFL using pybind11";
@@ -841,248 +634,6 @@ PYBIND11_MODULE(doosan_drfl, m) {
    **************/
 
   m.attr("SPEED_MODE") = m.attr("MONITORING_SPEED");
-
-  /************
-   * Calbacks *
-   ************/
-
-  m.def(
-      "set_robot_instance",
-      [](py::object obj) {
-        try {
-          g_robot = obj.cast<DRAFramework::CDRFLEx *>();
-        } catch (const py::cast_error &) {
-          // Fallback: treat as a raw pointer address from ctypes
-          g_robot =
-              reinterpret_cast<DRAFramework::CDRFLEx *>(obj.cast<size_t>());
-        }
-      },
-      py::arg("robot"),
-      "Register the CDRFLEx instance. Pass the pybind11-wrapped object "
-      "or a raw pointer as an integer (e.g. from ctypes).");
-
-  m.def(
-      "has_robot_instance", []() { return g_robot != nullptr; },
-      "Returns True if a CDRFLEx instance has been registered.");
-
-  // ── Callback registration ─────────────────────────────────────────────────
-
-  m.def(
-      "set_on_monitoring_state",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringState, set_on_monitoring_state,
-                 trampoline_MonitoringState, void(const ROBOT_STATE));
-      },
-      py::arg("callback"), "ROBOT_STATE change events.");
-
-  m.def(
-      "set_on_monitoring_data",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringData, set_on_monitoring_data,
-                 trampoline_MonitoringData, void(const LPMONITORING_DATA));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_ctrl_io",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringCtrlIO, set_on_monitoring_ctrl_io,
-                 trampoline_MonitoringCtrlIO, void(const LPMONITORING_CTRLIO));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_ctrl_io_ex",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringCtrlIOEx, set_on_monitoring_ctrl_io_ex,
-                 trampoline_MonitoringCtrlIOEx,
-                 void(const LPMONITORING_CTRLIO_EX));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_welding_data",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringWeldingData, set_on_monitoring_welding_data,
-                 trampoline_MonitoringWeldingData,
-                 void(const LPROBOT_WELDING_DATA));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_analog_welding_data",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringAnalogWeldingData,
-                 set_on_monitoring_analog_welding_data,
-                 trampoline_MonitoringAnalogWeldingData,
-                 void(const LPMONITORING_ALALOG_WELDING));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_digital_welding_data",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringDigitalWeldingData,
-                 set_on_monitoring_digital_welding_data,
-                 trampoline_MonitoringDigitalWeldingData,
-                 void(const LPMONITORING_DIGITAL_WELDING));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_modbus",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringModbus, set_on_monitoring_modbus,
-                 trampoline_MonitoringModbus, void(const LPMONITORING_MODBUS));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_speed_mode",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringSpeedMode, set_on_monitoring_speed_mode,
-                 trampoline_MonitoringSpeedMode, void(const MONITORING_SPEED));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_access_control",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringAccessControl, set_on_monitoring_access_control,
-                 trampoline_MonitoringAccessControl,
-                 void(const MONITORING_ACCESS_CONTROL));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_log_alarm",
-      [](py::object cb) {
-        REGISTER(g_onLogAlarm, set_on_log_alarm, trampoline_LogAlarm,
-                 void(LPLOG_ALARM));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_tp_popup",
-      [](py::object cb) {
-        REGISTER(g_onTpPopup, set_on_tp_popup, trampoline_TpPopup,
-                 void(LPMESSAGE_POPUP));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_tp_log",
-      [](py::object cb) {
-        // Special case: char[256] is surfaced to Python as a plain str.
-        g_onTpLog = cb.is_none()
-                        ? nullptr
-                        : cb.cast<std::function<void(const std::string &)>>();
-        get_robot().set_on_tp_log(cb.is_none() ? nullptr : trampoline_TpLog);
-      },
-      py::arg("callback"),
-      "Log message delivered as a Python str (max 256 chars).");
-
-  m.def(
-      "set_on_tp_progress",
-      [](py::object cb) {
-        REGISTER(g_onTpProgress, set_on_tp_progress, trampoline_TpProgress,
-                 void(LPMESSAGE_PROGRESS));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_tp_get_user_input",
-      [](py::object cb) {
-        REGISTER(g_onTpGetUserInput, set_on_tp_get_user_input,
-                 trampoline_TpGetUserInput, void(LPMESSAGE_INPUT));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_homming_completed",
-      [](py::object cb) {
-        REGISTER(g_onHommingCompleted, set_on_homming_completed,
-                 trampoline_HommingCompleted, void());
-      },
-      py::arg("callback"),
-      "Fired when the homing sequence finishes (no arguments).");
-
-  m.def(
-      "set_on_tp_initializing_completed",
-      [](py::object cb) {
-        REGISTER(g_onTpInitializingCompleted, set_on_tp_initializing_completed,
-                 trampoline_TpInitializingCompleted, void());
-      },
-      py::arg("callback"),
-      "Fired when the teach pendant finishes initialising (no arguments).");
-
-  m.def(
-      "set_on_mastering_need",
-      [](py::object cb) {
-        REGISTER(g_onMasteringNeed, set_on_mastering_need,
-                 trampoline_MasteringNeed, void());
-      },
-      py::arg("callback"), "Fired when mastering is required (no arguments).");
-
-  m.def(
-      "set_on_program_stopped",
-      [](py::object cb) {
-        REGISTER(g_onProgramStopped, set_on_program_stopped,
-                 trampoline_ProgramStopped, void(const PROGRAM_STOP_CAUSE));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_disconnected",
-      [](py::object cb) {
-        REGISTER(g_onDisconnected, set_on_disconnected, trampoline_Disconnected,
-                 void());
-      },
-      py::arg("callback"), "Fired on connection loss (no arguments).");
-
-  m.def(
-      "set_on_monitoring_safety_state",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringSafetyState, set_on_monitoring_safety_state,
-                 trampoline_MonitoringSafetyState, void(const SAFETY_STATE));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_robot_system",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringRobotSystem, set_on_monitoring_robot_system,
-                 trampoline_MonitoringRobotSystem, void(const ROBOT_SYSTEM));
-      },
-      py::arg("callback"));
-
-  m.def(
-      "set_on_monitoring_safety_stop_type",
-      [](py::object cb) {
-        REGISTER(g_onMonitoringSafetyStopType,
-                 set_on_monitoring_safety_stop_type,
-                 trampoline_MonitoringSafetyStopType, void(unsigned char));
-      },
-      py::arg("callback"), "Stop type delivered as a Python int (0-255).");
-
-  m.def(
-      "set_on_rt_monitoring_data",
-      [](py::object cb) {
-        REGISTER(g_onRTMonitoringData, set_on_rt_monitoring_data,
-                 trampoline_RTMonitoringData,
-                 void(const LPRT_OUTPUT_DATA_LIST));
-      },
-      py::arg("callback"));
-
-  // Shares TOnLogAlarmCB type but is a separate real-time alarm channel.
-  m.def(
-      "set_on_rt_log_alarm",
-      [](py::object cb) {
-        REGISTER(g_onRtLogAlarm, set_on_rt_log_alarm, trampoline_RtLogAlarm,
-                 void(LPLOG_ALARM));
-      },
-      py::arg("callback"),
-      "Real-time alarm channel (separate from set_on_log_alarm).");
 
   /***********
    * STRUCTS *
@@ -3280,1126 +2831,182 @@ PYBIND11_MODULE(doosan_drfl, m) {
           STR_PROP(IETHERNET_SLAVE_RESPONSE_DATA_EX, _szData);
 
   // bind the CDRFLEx class
-  py::class_<DRAFramework::CDRFLEx> (m, "CDRFLEx")
-      .def(py::init<>()) // Binds the default constructor
-      .def("open_connection", &DRAFramework::CDRFLEx::open_connection,
-           py::arg("ip"), py::arg("port") = 12345,
-           "Connect to the Doosan robot controller")
-
-      // Close made connection
-      .def("close_connection", &DRAFramework::CDRFLEx::close_connection,
-           "Disconnect the Doosan robot controller")
-
-      // Set control mode of the robot
-      .def("manage_access_control",
-           &DRAFramework::CDRFLEx::manage_access_control,
-           py::arg("access_control"), "Manage acces control")
-
-      /*****************
-       * GET FUNCTIONS *
-       *****************/
-      // Get robot state.
-      .def("get_robot_state", &DRAFramework::CDRFLEx::get_robot_state,
-           "Retrieve the current state of the robot")
-
-      // Get system version
-      .def("get_system_version", &DRAFramework::CDRFLEx::get_system_version,
-           py::arg("pVersion"), "Retrieve the system version")
-
-      // Get library version
-      .def("get_library_version", &DRAFramework::CDRFLEx::get_library_version,
-           "Retrieve the library version")
-
-      // Get robot mode
-      .def("get_robot_mode", &DRAFramework::CDRFLEx::get_robot_mode,
-           "Retrieve the robot mode")
-
-      // Get robot speed mode
-      .def("get_robot_speed_mode", &DRAFramework::CDRFLEx::get_robot_speed_mode,
-           "Retrieve the robot speed mode")
-
-      // Get program state
-      .def("get_program_state", &DRAFramework::CDRFLEx::get_program_state,
-           "Retrieve the program state")
-
-      // Get robot system
-      .def("get_robot_system", &DRAFramework::CDRFLEx::get_robot_system,
-           "Retrieve the robot system")
-
-      // Get current pose
-      .def("get_current_pose", &DRAFramework::CDRFLEx::get_current_pose,
-           py::arg("space_type") = ROBOT_SPACE::ROBOT_SPACE_JOINT,
-           "Retrieve the current pose")
-
-      // Get current posj
-      .def("get_current_posj", &DRAFramework::CDRFLEx::get_current_posj,
-           "Retrieve the current pose in joint space")
-
-      // Get desired posj
-      .def("get_desired_posj", &DRAFramework::CDRFLEx::get_desired_posj,
-           "Retrieve the desired pose in joint space")
-
-      // Get current joint velocity
-      .def("get_current_velj", &DRAFramework::CDRFLEx::get_current_velj,
-           "Retrieve the current joint velocity")
-
-      // Get current pos x
-      .def("get_current_posx", &DRAFramework::CDRFLEx::get_current_posx,
-           py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-           "Retrieve the current position in base coordinate system")
-
-      // Get desired pos x
-      .def("get_desired_posx", &DRAFramework::CDRFLEx::get_desired_posx,
-           py::arg("coodType") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-           "Retrieve the desired position in base coordinate system")
-
-      // Get current tool flange pos x
-      .def(
-          "get_current_tool_flange_posx",
-          &DRAFramework::CDRFLEx::get_current_tool_flange_posx,
-          "Retrieve the current tool flange position in base coordinate system")
-
-      // Get current vel x
-      .def("get_current_velx", &DRAFramework::CDRFLEx::get_current_velx,
-           "Retrieve the current velocity in base coordinate system")
-
-      // Get desired vel x
-      .def("get_desired_velx", &DRAFramework::CDRFLEx::get_desired_velx,
-           "Retrieve the desired velocity in base coordinate system")
-
-      // Get joint torque
-      .def("get_joint_torque", &DRAFramework::CDRFLEx::get_joint_torque,
-           "Retrieve the joint torque")
-
-      // Get current control space
-      .def("get_control_space", &DRAFramework::CDRFLEx::get_control_space,
-           "Retrieve the current control space")
-
-      // Get external torque
-      .def("get_external_torque", &DRAFramework::CDRFLEx::get_external_torque,
-           "Retrieve the external torque")
-
-      // Get tool force
-      .def("get_tool_force", &DRAFramework::CDRFLEx::get_tool_force,
-           py::arg("target_ref") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-           "Retrieve the tool force")
-
-      // Get current solution space
-      .def("get_current_solution_space",
-           &DRAFramework::CDRFLEx::get_current_solution_space,
-           "Retrieve the current solution space")
-
-      // Get last alarm
-      .def("get_last_alarm", &DRAFramework::CDRFLEx::get_last_alarm,
-           "Retrieve the last alarm")
-
-      // Get solution space
-      .def(
-          "get_solution_space",
-          [](DRAFramework::CDRFLEx &self,
-             const py::array_t<float> &target_pos) -> unsigned char {
-            // 1. Get the buffer info
-            auto buf = target_pos.request();
-
-            // 2. CRITICAL CHECK: Enforce size constraint
-            if (buf.size != NUM_JOINT) {
-              // Raise a Python exception instead of crashing
-              throw py::value_error("Input array size (" +
-                                    std::to_string(buf.size) +
-                                    ") does not match expected NUM_JOINT (" +
-                                    std::to_string(NUM_JOINT) + ").");
-            }
-
-            // 3. Safe to proceed now
-            float *ptr = static_cast<float *>(buf.ptr);
-            return self.get_solution_space(ptr);
-          },
-          py::arg("target_pos"), "Function for calculating solution space")
-
-      // Get orientation error
-      .def(
-          "get_orientation_error",
-          [](DRAFramework::CDRFLEx &self, const py::array_t<float> &pos1,
-             const py::array_t<float> &pos2, TASK_AXIS axis) -> float {
-            // Validate both arrays
-            auto buf1 = pos1.request();
-            auto buf2 = pos2.request();
-
-            if (buf1.size != NUM_TASK) {
-              throw py::value_error("pos1 size (" + std::to_string(buf1.size) +
-                                    ") does not match NUM_TASK (" +
-                                    std::to_string(NUM_TASK) + ")");
-            }
-
-            if (buf2.size != NUM_TASK) {
-              throw py::value_error("pos2 size (" + std::to_string(buf2.size) +
-                                    ") does not match NUM_TASK (" +
-                                    std::to_string(NUM_TASK) + ")");
-            }
-
-            // Call original method
-            return self.get_orientation_error(static_cast<float *>(buf1.ptr),
-                                              static_cast<float *>(buf2.ptr),
-                                              axis);
-          },
-          py::arg("position1"), py::arg("position2"), py::arg("axis"),
-          "Get the orientation error between two positions along a given axis")
-
-      // Get control mode
-      .def("get_control_mode", &DRAFramework::CDRFLEx::get_control_mode,
-           "Get the current control mode")
-
-      // get current rot matrix
-      .def(
-          "get_current_rotm",
-          [](DRAFramework::CDRFLEx &self,
-             COORDINATE_SYSTEM eTargetRef = COORDINATE_SYSTEM_BASE) {
-            // Call the original function
-            float (*ptr)[3] = self.get_current_rotm(eTargetRef);
-
-            // Copy the data into a numpy array
-            // IMPORTANT: We copy because the original pointer may become
-            // invalid
-            py::array_t<float> result(3);
-            auto buf = result.request();
-            float *result_ptr = static_cast<float *>(buf.ptr);
-
-            // Copy 3 elements
-            for (int i = 0; i < 3; i++) {
-              result_ptr[i] = (*ptr)[i];
-            }
-
-            return result;
-          },
-          py::arg("eTargetRef") = COORDINATE_SYSTEM::COORDINATE_SYSTEM_BASE,
-          "Get the current rotation matrix")
-
-      /*****************
-       * SET FUNCTIONS *
-       *****************/
-
-      // Set robot mode
-      .def("set_robot_mode", &DRAFramework::CDRFLEx::set_robot_mode,
-           py::arg("robot_mode"), "Set the robot mode")
-
-      // Set robot control mode
-      .def("set_robot_control", &DRAFramework::CDRFLEx::set_robot_control,
-           py::arg("robot_control"), "Set the robot control mode")
-
-      // Set robot system
-      .def("set_robot_system", &DRAFramework::CDRFLEx::set_robot_system,
-           py::arg("system_system"), "Set the robot system version")
-
-      // Set robot speed mode
-      .def("set_robot_speed_mode", &DRAFramework::CDRFLEx::set_robot_speed_mode,
-           py::arg("speed_mode"), "Set the robot speed mode")
-
-      // Set safe stop reset type
-      .def("set_safe_stop_reset_type",
-           &DRAFramework::CDRFLEx::set_safe_stop_reset_type,
-           py::arg("reset_type") =
-               SAFE_STOP_RESET_TYPE::SAFE_STOP_RESET_TYPE_DEFAULT,
-           "Set the safe stop reset type")
-
-      // Functions that control motion
-
-      .def(
-          "movej",
-          [](DRAFramework::CDRFLEx &self, py::array_t<float> targetPos,
-             float targetVal, float targetAcc, float targetTime,
-             MOVE_MODE moveMode, float bendingRadius,
-             BLENDING_SPEED_TYPE blendingType) {
-            if (targetPos.size() != NUM_JOINT)
-              throw std::runtime_error("Pos must have exactly 6 elements");
-            return self.movej(targetPos.mutable_data(), targetVal, targetAcc,
-                              targetTime, moveMode, bendingRadius,
-                              blendingType);
-          },
-          py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("blending_radius") = 0.f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          "Movej array command")
-
-      .def(
-          "movej",
-          [](DRAFramework::CDRFLEx &self, py::array_t<float> targetPos,
-             py::array_t<float> targetVel, py::array_t<float> targetAcc,
-             float targetTime, MOVE_MODE moveMode, float blendingRadius,
-             BLENDING_SPEED_TYPE blendingType) {
-            if (targetPos.size() != NUM_JOINT)
-              throw std::runtime_error("Pos must have exactly 6 elements.");
-            if (targetVel.size() != NUM_JOINT)
-              throw std::runtime_error("Vel must have exactly 6 elements.");
-            if (targetAcc.size() != NUM_JOINT)
-              throw std::runtime_error("Acc must have exactly 6 elements.");
-            return self.movej(targetPos.mutable_data(),
-                              targetVel.mutable_data(),
-                              targetAcc.mutable_data(), targetTime, moveMode,
-                              blendingRadius, blendingType);
-          },
-          py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("blending_radius") = 0.f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          "Movej array command")
-
-      .def(
-          "movel",
-          [](DRAFramework::CDRFLEx &self, py::array_t<float> targetPos,
-             py::array_t<float> targetVel, py::array_t<float> targetAcc,
-             float targetTime, MOVE_MODE moveMode, MOVE_REFERENCE moveReference,
-             float blendingRadius, BLENDING_SPEED_TYPE blendingType,
-             DR_MV_APP appType) {
-            if (targetPos.size() != NUM_TASK)
-              throw std::runtime_error("pos must have exactly 6 elements.");
-            if (targetVel.size() != 2)
-              throw std::runtime_error("Vel must have exactly 2 elements.");
-            if (targetAcc.size() != 2)
-              throw std::runtime_error("Acc must have exactly 2 elements.");
-            return self.movel(
-                targetPos.mutable_data(), targetVel.mutable_data(),
-                targetAcc.mutable_data(), targetTime, moveMode, moveReference,
-                blendingRadius, blendingType, appType);
-          },
-          py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("move_reference") = MOVE_REFERENCE::MOVE_REFERENCE_BASE,
-          py::arg("blending_radius") = 0.f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          py::arg("app_type") = DR_MV_APP::DR_MV_APP_NONE, "Movel command")
-
-      .def(
-          "movejx",
-          [](DRAFramework::CDRFLEx &self, py::array_t<float> targetPos,
-             unsigned char solutionSpace, float targetVel, float targetAcc,
-             float targetTime, MOVE_MODE moveMode, MOVE_REFERENCE moveReference,
-             float blendingRadius, BLENDING_SPEED_TYPE blendingType) {
-            if (targetPos.size() != NUM_TASK)
-              throw std::runtime_error("Pos must have exactly 6 elements.");
-            return self.movejx(targetPos.mutable_data(), solutionSpace,
-                               targetVel, targetAcc, targetTime, moveMode,
-                               moveReference, blendingRadius, blendingType);
-          },
-          py::arg("pos"), py::arg("solution_space"), py::arg("vel"),
-          py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("move_reference") = MOVE_REFERENCE::MOVE_REFERENCE_BASE,
-          py::arg("blending_radius") = 0.1f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          "movejx command")
-
-      .def(
-          "movejx",
-          [](DRAFramework::CDRFLEx &self, py::array_t<float> targetPos,
-             unsigned char solutionSpace, py::array_t<float> targetVel,
-             py::array_t<float> targetAcc, float targetTime, MOVE_MODE moveMode,
-             MOVE_REFERENCE moveReverence, float blendingRadius,
-             BLENDING_SPEED_TYPE blendingType) {
-            if (targetPos.size() != NUM_JOINT)
-              throw std::runtime_error("Pos must have exactly 6 elements.");
-            if (targetVel.size() != NUM_JOINT)
-              throw std::runtime_error("vel must have exactly 6 elements.");
-            if (targetAcc.size() != NUM_JOINT)
-              throw std::runtime_error("Acc must have exactly 6 elements.");
-            return self.movejx(targetPos.mutable_data(), solutionSpace,
-                               targetVel.mutable_data(),
-                               targetAcc.mutable_data(), targetTime, moveMode,
-                               moveReverence, blendingRadius, blendingType);
-          },
-          py::arg("pos"), py::arg("solution_space"), py::arg("vel"),
-          py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("move_reference") = MOVE_REFERENCE::MOVE_REFERENCE_BASE,
-          py::arg("blending_radius") = 0.1f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          "movejx command")
-
-      .def(
-          "movec",
-          [](DRAFramework::CDRFLEx &self,
-             py::array_t<float, py::array::c_style | py::array::forcecast>
-                 targetPos,
-             py::array_t<float> targetVel, py::array_t<float> targetAcc,
-             float targetTime, MOVE_MODE moveMode, MOVE_REFERENCE moveReference,
-             float targetAngle1, float targetAngle2, float blendingRadius,
-             BLENDING_SPEED_TYPE blendingType, MOVE_ORIENTATION orientation,
-             DR_MV_APP appType) {
-            if (targetPos.ndim() != 2 || targetPos.shape(0) != 2 ||
-                targetPos.shape(1) != NUM_TASK)
-              throw std::runtime_error("targetPos must have shape (2, 6)");
-            if (targetVel.size() != 2)
-              throw std::runtime_error(
-                  "targetVel must have exactly 2 elements");
-            if (targetAcc.size() != 2)
-              throw std::runtime_error(
-                  "targetAcc must have exactly 2 elements");
-
-            // Cast to 2D C array pointer for the C++ call
-            float (*pTargetPos)[NUM_TASK] =
-                reinterpret_cast<float (*)[NUM_TASK]>(targetPos.mutable_data());
-
-            return self.movec(
-                pTargetPos, targetVel.mutable_data(), targetAcc.mutable_data(),
-                targetTime, moveMode, moveReference, targetAngle1, targetAngle2,
-                blendingRadius, blendingType, orientation, appType);
-          },
-          py::arg("pos"), py::arg("vel"), py::arg("acc"), py::arg("time") = 0.f,
-          py::arg("move_mode") = MOVE_MODE::MOVE_MODE_ABSOLUTE,
-          py::arg("move_reference") = MOVE_REFERENCE::MOVE_REFERENCE_BASE,
-          py::arg("target_angle1") = 0.f, py::arg("target_angle2") = 0.f,
-          py::arg("blending_radius") = 0.f,
-          py::arg("blending_type") =
-              BLENDING_SPEED_TYPE::BLENDING_SPEED_TYPE_DUPLICATE,
-          py::arg("orientation") = MOVE_ORIENTATION::DR_MV_ORI_TEACH,
-          py::arg("app_type") = DR_MV_APP::DR_MV_APP_NONE)
-
-      // -------------------------------------------------------------------------
-      // movesj - scalar vel/acc overload
-      // -------------------------------------------------------------------------
-      .def(
-          "movesj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             float fTargetVel, float fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_JOINT)");
-            float (*pTargetPos)[NUM_JOINT] =
-                reinterpret_cast<float (*)[NUM_JOINT]>(
-                    fTargetPos.mutable_data());
-            return self.movesj(pTargetPos, nPosCount, fTargetVel, fTargetAcc,
-                               fTargetTime, eMoveMode);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE)
-
-      // -------------------------------------------------------------------------
-      // movesj - array vel/acc overload
-      // -------------------------------------------------------------------------
-      .def(
-          "movesj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             arr_f fTargetVel, arr_f fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_JOINT)");
-            if (fTargetVel.size() != NUMBER_OF_JOINT)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly NUMBER_OF_JOINT elements");
-            if (fTargetAcc.size() != NUMBER_OF_JOINT)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly NUMBER_OF_JOINT elements");
-            float (*pTargetPos)[NUM_JOINT] =
-                reinterpret_cast<float (*)[NUM_JOINT]>(
-                    fTargetPos.mutable_data());
-            return self.movesj(pTargetPos, nPosCount, fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime,
-                               eMoveMode);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE)
-
-      // -------------------------------------------------------------------------
-      // movesx
-      // -------------------------------------------------------------------------
-      .def(
-          "movesx",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             arr_f fTargetVel, arr_f fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode, MOVE_REFERENCE eMoveReference,
-             SPLINE_VELOCITY_OPTION eVelOpt) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_TASK)");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            float (*pTargetPos)[NUM_TASK] =
-                reinterpret_cast<float (*)[NUM_TASK]>(
-                    fTargetPos.mutable_data());
-            return self.movesx(pTargetPos, nPosCount, fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime,
-                               eMoveMode, eMoveReference, eVelOpt);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("eVelOpt") = SPLINE_VELOCITY_OPTION_DEFAULT)
-
-      // -------------------------------------------------------------------------
-      // moveb
-      // -------------------------------------------------------------------------
-      .def(
-          "moveb",
-          [](DRAFramework::CDRFLEx &self, py::array_t<MOVE_POSB> tTargetPos,
-             unsigned char nPosCount, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime, MOVE_MODE eMoveMode,
-             MOVE_REFERENCE eMoveReference, DR_MV_APP eAppType) {
-            if (tTargetPos.size() != MAX_MOVEB_POINT)
-              throw std::runtime_error(
-                  "tTargetPos must have exactly MAX_MOVEB_POINT elements");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.moveb(tTargetPos.mutable_data(), nPosCount,
-                              fTargetVel.mutable_data(),
-                              fTargetAcc.mutable_data(), fTargetTime, eMoveMode,
-                              eMoveReference, eAppType);
-          },
-          py::arg("tTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("eAppType") = DR_MV_APP_NONE)
-
-      // -------------------------------------------------------------------------
-      // move_spiral - radius/length overload
-      // -------------------------------------------------------------------------
-      .def(
-          "move_spiral",
-          [](DRAFramework::CDRFLEx &self, TASK_AXIS eTaskAxis, float fRevolution,
-             float fMaximuRadius, float fMaximumLength, arr_f fTargetVel,
-             arr_f fTargetAcc, float fTargetTime,
-             MOVE_REFERENCE eMoveReference) {
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.move_spiral(eTaskAxis, fRevolution, fMaximuRadius,
-                                    fMaximumLength, fTargetVel.mutable_data(),
-                                    fTargetAcc.mutable_data(), fTargetTime,
-                                    eMoveReference);
-          },
-          py::arg("eTaskAxis"), py::arg("fRevolution"),
-          py::arg("fMaximuRadius"), py::arg("fMaximumLength"),
-          py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveReference") = MOVE_REFERENCE_TOOL)
-
-      // -------------------------------------------------------------------------
-      // move_spiral - target position overload
-      // -------------------------------------------------------------------------
-      .def(
-          "move_spiral",
-          [](DRAFramework::CDRFLEx &self, TASK_AXIS eTaskAxis, float fRevolution,
-             arr_f fTargetPos, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime, MOVE_REFERENCE eMoveReference,
-             MOVE_MODE eMoveMode, SPIRAL_DIR eSpiralDir, ROT_DIR eRotDir) {
-            if (fTargetPos.size() != 3)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly 3 elements");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.move_spiral(
-                eTaskAxis, fRevolution, fTargetPos.mutable_data(),
-                fTargetVel.mutable_data(), fTargetAcc.mutable_data(),
-                fTargetTime, eMoveReference, eMoveMode, eSpiralDir, eRotDir);
-          },
-          py::arg("eTaskAxis"), py::arg("fRevolution"), py::arg("fTargetPos"),
-          py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveReference") = MOVE_REFERENCE_TOOL,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eSpiralDir") = DR_SPIRAL_OUTWARD,
-          py::arg("eRotDir") = DR_ROT_FORWARD)
-
-      // -------------------------------------------------------------------------
-      // move_periodic
-      // -------------------------------------------------------------------------
-      .def(
-          "move_periodic",
-          [](DRAFramework::CDRFLEx &self, arr_f fAmplitude, arr_f fPeriodic, float fAccelTime,
-             unsigned int nRepeat, MOVE_REFERENCE eMoveReference) {
-            if (fAmplitude.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fAmplitude must have exactly NUM_TASK elements");
-            if (fPeriodic.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fPeriodic must have exactly NUM_TASK elements");
-            return self.move_periodic(fAmplitude.mutable_data(),
-                                      fPeriodic.mutable_data(), fAccelTime,
-                                      nRepeat, eMoveReference);
-          },
-          py::arg("fAmplitude"), py::arg("fPeriodic"), py::arg("fAccelTime"),
-          py::arg("nRepeat"), py::arg("eMoveReference") = MOVE_REFERENCE_TOOL)
-
-      // -------------------------------------------------------------------------
-      // amovej
-      // -------------------------------------------------------------------------
-      .def(
-          "amovej",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, arr_f fTargetVel,
-             arr_f fTargetAcc, float fTargetTime, MOVE_MODE eMoveMode,
-             BLENDING_SPEED_TYPE eBlendingType) {
-            if (fTargetPos.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly NUM_JOINT elements");
-            if (fTargetVel.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly NUM_JOINT elements");
-            if (fTargetAcc.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly NUM_JOINT elements");
-            return self.amovej(fTargetPos.mutable_data(),
-                               fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime,
-                               eMoveMode, eBlendingType);
-          },
-          py::arg("fTargetPos"), py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eBlendingType") = BLENDING_SPEED_TYPE_DUPLICATE)
-
-      // -------------------------------------------------------------------------
-      // amovel
-      // -------------------------------------------------------------------------
-      .def(
-          "amovel",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, arr_f fTargetVel,
-             arr_f fTargetAcc, float fTargetTime, MOVE_MODE eMoveMode,
-             MOVE_REFERENCE eMoveReference, BLENDING_SPEED_TYPE eBlendingType,
-             DR_MV_APP eAppType) {
-            if (fTargetPos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly NUM_TASK elements");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.amovel(
-                fTargetPos.mutable_data(), fTargetVel.mutable_data(),
-                fTargetAcc.mutable_data(), fTargetTime, eMoveMode,
-                eMoveReference, eBlendingType, eAppType);
-          },
-          py::arg("fTargetPos"), py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("eBlendingType") = BLENDING_SPEED_TYPE_DUPLICATE,
-          py::arg("eAppType") = DR_MV_APP_NONE)
-
-      // -------------------------------------------------------------------------
-      // amovec
-      // -------------------------------------------------------------------------
-      .def(
-          "amovec",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, arr_f fTargetVel,
-             arr_f fTargetAcc, float fTargetTime, MOVE_MODE eMoveMode,
-             MOVE_REFERENCE eMoveReference, float fTargetAngle1,
-             float fTargetAngle2, BLENDING_SPEED_TYPE eBlendingType,
-             MOVE_ORIENTATION eOrientation, DR_MV_APP eAppType) {
-            if (fTargetPos.ndim() != 2 || fTargetPos.shape(0) != 2 ||
-                fTargetPos.shape(1) != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (2, NUM_TASK)");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            float (*pTargetPos)[NUM_TASK] =
-                reinterpret_cast<float (*)[NUM_TASK]>(
-                    fTargetPos.mutable_data());
-            return self.amovec(pTargetPos, fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime,
-                               eMoveMode, eMoveReference, fTargetAngle1,
-                               fTargetAngle2, eBlendingType, eOrientation,
-                               eAppType);
-          },
-          py::arg("fTargetPos"), py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("fTargetAngle1") = 0.f, py::arg("fTargetAngle2") = 0.f,
-          py::arg("eBlendingType") = BLENDING_SPEED_TYPE_DUPLICATE,
-          py::arg("eOrientation") = DR_MV_ORI_TEACH,
-          py::arg("eAppType") = DR_MV_APP_NONE)
-
-      // -------------------------------------------------------------------------
-      // amovesj - scalar vel/acc overload
-      // -------------------------------------------------------------------------
-      .def(
-          "amovesj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             float fTargetVel, float fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_JOINT)");
-            float (*pTargetPos)[NUM_JOINT] =
-                reinterpret_cast<float (*)[NUM_JOINT]>(
-                    fTargetPos.mutable_data());
-            return self.amovesj(pTargetPos, nPosCount, fTargetVel, fTargetAcc,
-                                fTargetTime, eMoveMode);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE)
-
-      // -------------------------------------------------------------------------
-      // amovesj - array vel/acc overload
-      // -------------------------------------------------------------------------
-      .def(
-          "amovesj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             arr_f fTargetVel, arr_f fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_JOINT)");
-            if (fTargetVel.size() != NUMBER_OF_JOINT)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly NUMBER_OF_JOINT elements");
-            if (fTargetAcc.size() != NUMBER_OF_JOINT)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly NUMBER_OF_JOINT elements");
-            float (*pTargetPos)[NUM_JOINT] =
-                reinterpret_cast<float (*)[NUM_JOINT]>(
-                    fTargetPos.mutable_data());
-            return self.amovesj(
-                pTargetPos, nPosCount, fTargetVel.mutable_data(),
-                fTargetAcc.mutable_data(), fTargetTime, eMoveMode);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE)
-
-      // -------------------------------------------------------------------------
-      // amovesx
-      // -------------------------------------------------------------------------
-      .def(
-          "amovesx",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, unsigned char nPosCount,
-             arr_f fTargetVel, arr_f fTargetAcc, float fTargetTime,
-             MOVE_MODE eMoveMode, MOVE_REFERENCE eMoveReference,
-             SPLINE_VELOCITY_OPTION eVelOpt) {
-            if (fTargetPos.ndim() != 2 ||
-                fTargetPos.shape(0) != MAX_SPLINE_POINT ||
-                fTargetPos.shape(1) != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have shape (MAX_SPLINE_POINT, NUM_TASK)");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            float (*pTargetPos)[NUM_TASK] =
-                reinterpret_cast<float (*)[NUM_TASK]>(
-                    fTargetPos.mutable_data());
-            return self.amovesx(pTargetPos, nPosCount,
-                                fTargetVel.mutable_data(),
-                                fTargetAcc.mutable_data(), fTargetTime,
-                                eMoveMode, eMoveReference, eVelOpt);
-          },
-          py::arg("fTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("eVelOpt") = SPLINE_VELOCITY_OPTION_DEFAULT)
-
-      // -------------------------------------------------------------------------
-      // amoveb
-      // -------------------------------------------------------------------------
-      .def(
-          "amoveb",
-          [](DRAFramework::CDRFLEx &self, py::array_t<MOVE_POSB> tTargetPos,
-             unsigned char nPosCount, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime, MOVE_MODE eMoveMode,
-             MOVE_REFERENCE eMoveReference, DR_MV_APP eAppType) {
-            if (tTargetPos.size() != MAX_MOVEB_POINT)
-              throw std::runtime_error(
-                  "tTargetPos must have exactly MAX_MOVEB_POINT elements");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.amoveb(tTargetPos.mutable_data(), nPosCount,
-                               fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime,
-                               eMoveMode, eMoveReference, eAppType);
-          },
-          py::arg("tTargetPos"), py::arg("nPosCount"), py::arg("fTargetVel"),
-          py::arg("fTargetAcc"), py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eMoveReference") = MOVE_REFERENCE_BASE,
-          py::arg("eAppType") = DR_MV_APP_NONE)
-
-      // -------------------------------------------------------------------------
-      // amove_spiral - radius/length overload
-      // -------------------------------------------------------------------------
-      .def(
-          "amove_spiral",
-          [](DRAFramework::CDRFLEx &self, TASK_AXIS eTaskAxis, float fRevolution,
-             float fMaximuRadius, float fMaximumLength, arr_f fTargetVel,
-             arr_f fTargetAcc, float fTargetTime,
-             MOVE_REFERENCE eMoveReference) {
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.amove_spiral(eTaskAxis, fRevolution, fMaximuRadius,
-                                     fMaximumLength, fTargetVel.mutable_data(),
-                                     fTargetAcc.mutable_data(), fTargetTime,
-                                     eMoveReference);
-          },
-          py::arg("eTaskAxis"), py::arg("fRevolution"),
-          py::arg("fMaximuRadius"), py::arg("fMaximumLength"),
-          py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveReference") = MOVE_REFERENCE_TOOL)
-
-      // -------------------------------------------------------------------------
-      // amove_spiral - target position overload
-      // -------------------------------------------------------------------------
-      .def(
-          "amove_spiral",
-          [](DRAFramework::CDRFLEx &self, TASK_AXIS eTaskAxis, float fRevolution,
-             arr_f fTargetPos, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime, MOVE_REFERENCE eMoveReference,
-             MOVE_MODE eMoveMode, SPIRAL_DIR eSpiralDir, ROT_DIR eRotDir) {
-            if (fTargetPos.size() != 3)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly 3 elements");
-            if (fTargetVel.size() != 2)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly 2 elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.amove_spiral(
-                eTaskAxis, fRevolution, fTargetPos.mutable_data(),
-                fTargetVel.mutable_data(), fTargetAcc.mutable_data(),
-                fTargetTime, eMoveReference, eMoveMode, eSpiralDir, eRotDir);
-          },
-          py::arg("eTaskAxis"), py::arg("fRevolution"), py::arg("fTargetPos"),
-          py::arg("fTargetVel"), py::arg("fTargetAcc"),
-          py::arg("fTargetTime") = 0.f,
-          py::arg("eMoveReference") = MOVE_REFERENCE_TOOL,
-          py::arg("eMoveMode") = MOVE_MODE_ABSOLUTE,
-          py::arg("eSpiralDir") = DR_SPIRAL_OUTWARD,
-          py::arg("eRotDir") = DR_ROT_FORWARD)
-
-      // -------------------------------------------------------------------------
-      // amove_periodic
-      // -------------------------------------------------------------------------
-      .def(
-          "amove_periodic",
-          [](DRAFramework::CDRFLEx &self, arr_f fAmplitude, arr_f fPeriodic, float fAccelTime,
-             unsigned int nRepeat, MOVE_REFERENCE eMoveReference) {
-            if (fAmplitude.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fAmplitude must have exactly NUM_TASK elements");
-            if (fPeriodic.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fPeriodic must have exactly NUM_TASK elements");
-            return self.amove_periodic(fAmplitude.mutable_data(),
-                                       fPeriodic.mutable_data(), fAccelTime,
-                                       nRepeat, eMoveReference);
-          },
-          py::arg("fAmplitude"), py::arg("fPeriodic"), py::arg("fAccelTime"),
-          py::arg("nRepeat"), py::arg("eMoveReference") = MOVE_REFERENCE_TOOL)
-
-      // -------------------------------------------------------------------------
-      // stop / pause / resume / mwait  (no arrays)
-      // -------------------------------------------------------------------------
-      .def(
-          "stop",
-          [](DRAFramework::CDRFLEx &self, STOP_TYPE eStopType) {
-            return self.stop(eStopType);
-          },
-          py::arg("eStopType") = STOP_TYPE_QUICK)
-      .def("move_pause", [](DRAFramework::CDRFLEx &self) { return self.move_pause(); })
-      .def("move_resume", [](DRAFramework::CDRFLEx &self) { return self.move_resume(); })
-      .def("mwait", [](DRAFramework::CDRFLEx &self) { return self.mwait(); })
-
-      // -------------------------------------------------------------------------
-      // trans
-      // -------------------------------------------------------------------------
-      .def(
-          "trans",
-          [](DRAFramework::CDRFLEx &self, arr_f fSourcePos, arr_f fOffset,
-             COORDINATE_SYSTEM eSourceRef, COORDINATE_SYSTEM eTargetRef) {
-            if (fSourcePos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fSourcePos must have exactly NUM_TASK elements");
-            if (fOffset.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fOffset must have exactly NUM_TASK elements");
-            return self.trans(fSourcePos.mutable_data(), fOffset.mutable_data(),
-                              eSourceRef, eTargetRef);
-          },
-          py::arg("fSourcePos"), py::arg("fOffset"),
-          py::arg("eSourceRef") = COORDINATE_SYSTEM_BASE,
-          py::arg("eTargetRef") = COORDINATE_SYSTEM_BASE)
-
-      // -------------------------------------------------------------------------
-      // fkin
-      // -------------------------------------------------------------------------
-      .def(
-          "fkin",
-          [](DRAFramework::CDRFLEx &self, arr_f fSourcePos, COORDINATE_SYSTEM eTargetRef) {
-            if (fSourcePos.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fSourcePos must have exactly NUM_JOINT elements");
-            return self.fkin(fSourcePos.mutable_data(), eTargetRef);
-          },
-          py::arg("fSourcePos"), py::arg("eTargetRef") = COORDINATE_SYSTEM_BASE)
-
-      // -------------------------------------------------------------------------
-      // ikin - returns LPROBOT_POSE
-      // -------------------------------------------------------------------------
-      .def(
-          "ikin",
-          [](DRAFramework::CDRFLEx &self, arr_f fSourcePos, unsigned char iSolutionSpace,
-             COORDINATE_SYSTEM eTargetRef) {
-            if (fSourcePos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fSourcePos must have exactly NUM_TASK elements");
-            return self.ikin(fSourcePos.mutable_data(), iSolutionSpace,
-                             eTargetRef);
-          },
-          py::arg("fSourcePos"), py::arg("iSolutionSpace"),
-          py::arg("eTargetRef") = COORDINATE_SYSTEM_BASE)
-
-      // -------------------------------------------------------------------------
-      // ikin - returns LPINVERSE_KINEMATIC_RESPONSE (iRefPosOpt overload)
-      // -------------------------------------------------------------------------
-      .def(
-          "ikin",
-          [](DRAFramework::CDRFLEx &self, arr_f fSourcePos, unsigned char iSolutionSpace,
-             COORDINATE_SYSTEM eTargetRef, unsigned char iRefPosOpt) {
-            if (fSourcePos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fSourcePos must have exactly NUM_TASK elements");
-            return self.ikin(fSourcePos.mutable_data(), iSolutionSpace,
-                             eTargetRef, iRefPosOpt);
-          },
-          py::arg("fSourcePos"), py::arg("iSolutionSpace"),
-          py::arg("eTargetRef"), py::arg("iRefPosOpt"))
-
-      // -------------------------------------------------------------------------
-      // ikin - returns LPINVERSE_KINEMATIC_RESPONSE (fIterThreshold overload)
-      // -------------------------------------------------------------------------
-      .def(
-          "ikin",
-          [](DRAFramework::CDRFLEx &self, arr_f fSourcePos, unsigned char iSolutionSpace,
-             COORDINATE_SYSTEM eTargetRef, arr_f fIterThreshold) {
-            if (fSourcePos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fSourcePos must have exactly NUM_TASK elements");
-            if (fIterThreshold.size() != NUMBER_OF_ITER_THRESHOULD)
-              throw std::runtime_error("fIterThreshold must have exactly "
-                                       "NUMBER_OF_ITER_THRESHOULD elements");
-            return self.ikin(fSourcePos.mutable_data(), iSolutionSpace,
-                             eTargetRef, fIterThreshold.mutable_data());
-          },
-          py::arg("fSourcePos"), py::arg("iSolutionSpace"),
-          py::arg("eTargetRef"), py::arg("fIterThreshold"))
-
-      // -------------------------------------------------------------------------
-      // set_ref_coord
-      // -------------------------------------------------------------------------
-      .def(
-          "set_ref_coord",
-          [](DRAFramework::CDRFLEx &self, COORDINATE_SYSTEM eTargetCoordSystem) {
-            return self.set_ref_coord(eTargetCoordSystem);
-          },
-          py::arg("eTargetCoordSystem"))
-
-      // -------------------------------------------------------------------------
-      // check_motion
-      // -------------------------------------------------------------------------
-      .def("check_motion", [](DRAFramework::CDRFLEx &self) { return self.check_motion(); })
-
-      // -------------------------------------------------------------------------
-      // enable_alter_motion
-      // -------------------------------------------------------------------------
-      .def(
-          "enable_alter_motion",
-          [](DRAFramework::CDRFLEx &self, int iCycleTime, PATH_MODE ePathMode,
-             COORDINATE_SYSTEM eTargetRef, arr_f fLimitDpos,
-             arr_f fLimitDposPer) {
-            if (fLimitDpos.size() != 2)
-              throw std::runtime_error(
-                  "fLimitDpos must have exactly 2 elements");
-            if (fLimitDposPer.size() != 2)
-              throw std::runtime_error(
-                  "fLimitDposPer must have exactly 2 elements");
-            return self.enable_alter_motion(iCycleTime, ePathMode, eTargetRef,
-                                            fLimitDpos.mutable_data(),
-                                            fLimitDposPer.mutable_data());
-          },
-          py::arg("iCycleTime"), py::arg("ePathMode"), py::arg("eTargetRef"),
-          py::arg("fLimitDpos"), py::arg("fLimitDposPer"))
-
-      // -------------------------------------------------------------------------
-      // alter_motion
-      // -------------------------------------------------------------------------
-      .def(
-          "alter_motion",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos) {
-            if (fTargetPos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly NUM_TASK elements");
-            return self.alter_motion(fTargetPos.mutable_data());
-          },
-          py::arg("fTargetPos"))
-
-      // -------------------------------------------------------------------------
-      // disable_alter_motion
-      // -------------------------------------------------------------------------
-      .def("disable_alter_motion",
-           [](DRAFramework::CDRFLEx &self) { return self.disable_alter_motion(); })
-
-      // -------------------------------------------------------------------------
-      // servoj
-      // -------------------------------------------------------------------------
-      .def(
-          "servoj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, arr_f fLimitVel, arr_f fLimitAcc,
-             float fTargetTime, DR_SERVOJ_TYPE eTargetMod) {
-            if (fTargetPos.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly NUM_JOINT elements");
-            if (fLimitVel.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fLimitVel must have exactly NUM_JOINT elements");
-            if (fLimitAcc.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fLimitAcc must have exactly NUM_JOINT elements");
-            return self.servoj(
-                fTargetPos.mutable_data(), fLimitVel.mutable_data(),
-                fLimitAcc.mutable_data(), fTargetTime, eTargetMod);
-          },
-          py::arg("fTargetPos"), py::arg("fLimitVel"), py::arg("fLimitAcc"),
-          py::arg("fTargetTime"), py::arg("eTargetMod") = DR_SERVO_OVERRIDE)
-
-      // -------------------------------------------------------------------------
-      // servol
-      // -------------------------------------------------------------------------
-      .def(
-          "servol",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetPos, arr_f fLimitVel, arr_f fLimitAcc,
-             float fTargetTime) {
-            if (fTargetPos.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetPos must have exactly NUM_TASK elements");
-            if (fLimitVel.size() != 2)
-              throw std::runtime_error(
-                  "fLimitVel must have exactly 2 elements");
-            if (fLimitAcc.size() != 2)
-              throw std::runtime_error(
-                  "fLimitAcc must have exactly 2 elements");
-            return self.servol(fTargetPos.mutable_data(),
-                               fLimitVel.mutable_data(),
-                               fLimitAcc.mutable_data(), fTargetTime);
-          },
-          py::arg("fTargetPos"), py::arg("fLimitVel"), py::arg("fLimitAcc"),
-          py::arg("fTargetTime"))
-
-      // -------------------------------------------------------------------------
-      // speedj
-      // -------------------------------------------------------------------------
-      .def(
-          "speedj",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime) {
-            if (fTargetVel.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly NUM_JOINT elements");
-            if (fTargetAcc.size() != NUM_JOINT)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly NUM_JOINT elements");
-            return self.speedj(fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime);
-          },
-          py::arg("fTargetVel"), py::arg("fTargetAcc"), py::arg("fTargetTime"))
-
-      // -------------------------------------------------------------------------
-      // speedl
-      // -------------------------------------------------------------------------
-      .def(
-          "speedl",
-          [](DRAFramework::CDRFLEx &self, arr_f fTargetVel, arr_f fTargetAcc,
-             float fTargetTime) {
-            if (fTargetVel.size() != NUM_TASK)
-              throw std::runtime_error(
-                  "fTargetVel must have exactly NUM_TASK elements");
-            if (fTargetAcc.size() != 2)
-              throw std::runtime_error(
-                  "fTargetAcc must have exactly 2 elements");
-            return self.speedl(fTargetVel.mutable_data(),
-                               fTargetAcc.mutable_data(), fTargetTime);
-          },
-          py::arg("fTargetVel"), py::arg("fTargetAcc"), py::arg("fTargetTime"))
-
-      // bool jog(
-      //  JOG_AXIS eJogAxis,
-      //  MOVE_REFERENCE eMoveReference,
-      //  float fVelocity)
-      .def("jog",
-          py::overload_cast<JOG_AXIS, MOVE_REFERENCE, float>(
-              &DRAFramework::CDRFLEx::jog),
-          py::arg("axis"), py::arg("reference"), py::arg("velocity"), "Jog motion")
-
-        .def("move_home", &DRAFramework::CDRFLEx::move_home,
-            py::arg("mode") = MOVE_HOME::MOVE_HOME_MECHANIC,
-            py::arg("run") = (unsigned char)1, "Move home")
-
-        /*
-            * Basic I/O functions
-            */
-
-        // Set ctrlbox output status
-        .def("set_digital_output", &DRAFramework::CDRFLEx::set_digital_output,
-           py::arg("GPIO_index"), py::arg("set"), "Set ctrlbox output status")
-
-        // Get ctrlbox input status
-        .def("get_digital_output", &DRAFramework::CDRFLEx::get_digital_output,
-            py::arg("GPIO_index"), "Get ctrlbox output status");
-
-    py::class_<DRAFramework::CDRFLEx> c(m, "tmp_5");
-    c.def(py::init<>());
-    bOpenConnection(c);
-    bCloseConnection(c);
+  py::class_<DRAFramework::CDRFLEx> c(m, "CDRFLEx");
+  c.def(py::init<>());
+  // Connection functions
+  bOpenConnection(c);
+  bCloseConnection(c);
+
+  // Robot property functions
+  bGetSystemVersion(c);
+  bGetLibraryVersion(c);
+  bGetRobotMode(c);
+  bSetRobotMode(c);
+  bGetRobotState(c);
+  bSetRobotControl(c);
+  bSetRobotSystem(c);
+  bGetRobotSpeedMode(c);
+  bSetRobotSpeedMode(c);
+  bGetProgramState(c);
+  bGetRobotSystem(c);
+  bSetSafeStopResetType(c);
+  bGetCurrentPose(c);
+  bGetcurrentPosj(c);
+  bGetDesiredPosj(c);
+  bGetCurrentVelj(c);
+  bGetCurrentPosx(c);
+  bGetDesiredPosx(c);
+  bGetCurrentToolFlangePosx(c);
+  bGetCurrentVelx(c);
+  bGetDesiredVelx(c);
+  bGetJointTorque(c);
+  bGetControlSpace(c);
+  bGetExternalTorque(c);
+  bGetToolForce(c);
+  bGetCurrentSolutionSpace(c);
+  bGetLastalarm(c);
+  bGetSolutionSpace(c);
+  bGetOrientationError(c);
+  bGetControlMode(c);
+  bGetCurrentRotm(c);
+  bGetSafetyConfiguration(c);
+
+  // Robot callback functions
+  bSetOnMonitoringState(c);
+  bSetOnMonitoringData(c);
+  bSetOnMonitoringDataEx(c);
+  bSetOnMonitoringCtrlIo(c);
+  bSetOnMonitoringCtrlIoEx(c);
+  bSetOnMonitoringModbus(c);
+  bSetOnLogAlarm(c);
+  bSetOnTpPopup(c);
+  bSetOnTpLog(c);
+  bSetOnTpProgress(c);
+  bSetOnTpGetUserInput(c);
+  bSetOnMonitoringAccessControl(c);
+  bSetOnHommingCompleted(c);
+  bSetOnTpInitializingCompleted(c);
+  bSetOnMonitoringSpeedMode(c);
+  bSetOnMasteringNeed(c);
+  bSetOnProgramStopped(c);
+  bSetOnDisconnected(c);
+  bSetOnMonitoringRobotSystem(c);
+  bSetOnMonitoringSafetyState(c);
+
+  // Robot control right functions
+  bManageAccessControl(c);
+
+  // Basic cotrol function
+  bJog(c);
+  bMoveHome(c);
+
+  // Robot motion functions
+  bMovej(c);
+  bMovel(c);
+  bMovejx(c);
+  bMovec(c);
+  bMovesj(c);
+  bMovesx(c);
+  bMoveb(c);
+  bMoveSpiral(c);
+  bMovePeriodic(c);
+  bAmovej(c);
+  bAmovel(c);
+  bAmovec(c);
+  bAmovesj(c);
+  bAmovesx(c);
+  bAmoveb(c);
+  bAmoveSpiral(c);
+  bAmovePeriodic(c);
+  bStop(c);
+  bTrans(c);
+  bFkin(c);
+  bIkine(c);
+  bSetRefCoord(c);
+  bCheckMotion(c);
+  bEnableAlterMotion(c);
+  bAlterMotion(c);
+  bDisableAlterMotion(c);
+  bServoj(c);
+  bServol(c);
+  bSpeedj(c);
+  bSpeedl(c);
+
+  // Robot settings functions
+  bAddTool(c);
+  bDelTool(c);
+  bSetTool(c);
+  bGetTool(c);
+  bAddTcp(c);
+  bDelTcp(c);
+  bSetTcp(c);
+  bGetTcp(c);
+  bSetToolShape(c);
+  bGetWorkpieceWeight(c);
+  bResetWorkpieceWeight(c);
+  bSetSingularityHandling(c);
+  bSetupMonitoringVersion(c);
+  bConfigProgramWatchVariable(c);
+  bSetUserHome(c);
+  bServoOff(c);
+  bReleaseProtectiveStop(c);
+  bChangeCollisionSensitivity(c);
+  bSetSafetyMode(c);
+  bSetAutoServoOff(c);
+  bSetWorkpieceWeight(c);
+
+  // Robot I/O functions
+  bSetToolDigitalOutput(c);
+  bGetToolDigitalOutput(c);
+  bGetToolDigitalInput(c);
+  bSetDigitalOutput(c);
+  bGetDigitalOutput(c);
+  bGetDigitalInput(c);
+  bSetModeAnalogInput(c);
+  bSetModeAnalogOutput(c);
+  bSetAnalogOutput(c);
+  bGetAnalogInput(c);
+  bAddModbusSignal(c);
+  bDelModbusSignal(c);
+  bSetModbusOutput(c);
+  bGetModbusInput(c);
+  bFlangeSerialOpen(c);
+  bFlangeSerialClose(c);
+  bFlangeSerialWrite(c);
+  bGetToolAnalogInput(c);
+  bSetToolDigitalOutputLevel(c);
+  bSetToolDigitalOutputType(c);
+  bSetModeToolAnalogInput(c);
+
+  // Robot program control functions
+  bDrlStart(c);
+  bDrlStop(c);
+  bDrlPause(c);
+  bDrlResume(c);
+  bChangeOperationSpeed(c);
+  bSaveSubProgram(c);
+  bTpPopupResponse(c);
+  bTpGetUserInputResponse(c);
+
+  // Miscellaneous functions
+  bParallelAxis(c);
+  bAlignAxis(c);
+  bIsDoneBoltTightening(c);
+  bTaskComplianceCtrl(c);
+  bReleaseComplianceCtrl(c);
+  bSetStiffnessx(c);
+  bCalcCoord(c);
+  bSetUserCartCoord(c);
+  bOverwriteUserCartCoord(c);
+  bGetUserCartCoord(c);
+  bSetDesiredForce(c);
+  bReleaseForce(c);
+  bCheckPositionConditionAbs(c);
+  bCheckPositionConditionRel(c);
+  bCheckPositionCondition(c);
+  bCheckForceCondition(c);
+  bCheckOrientationCondition(c);
+  bCoordTransform(c);
+  bSetPalletizingMode(c);
+  bQueryModbusDataList(c);
 }
