@@ -1,13 +1,6 @@
-#define DRCF_VERSION 2
-
 #pragma once
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include <pybind11/cast.h>
-#include <pybind11/functional.h>
-#include <sys/types.h>
-#include <stdexcept>
-#include <optional>
 
 #include "../API-DRFL/include/DRFL.h"
 

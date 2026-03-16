@@ -2,8 +2,11 @@
  *
  */
 #include "./cdrflex_bindings.hpp"
-// #include <pybind11/pybind11.h>
 #include <pybind11/cast.h>
+#include <pybind11/functional.h>
+#include <sys/types.h>
+#include <stdexcept>
+#include <optional>
 #include <string>
 
 using Class = py::class_<DRAFramework::CDRFLEx>;

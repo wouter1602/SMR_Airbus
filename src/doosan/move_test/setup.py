@@ -175,7 +175,8 @@ ext_modules = [
         'doosan_drfl',                      # Name of the generated Python module
         ['../libs/src/drfl_wrapper.cpp',
          '../libs/src/cdrflex_bindings.cpp',
-         '../libs/src/drfl_structs.cpp'],                # Your pybind11 C++ file
+         '../libs/src/drfl_structs.cpp',
+         '../libs/src/drfl_enums.cpp'],                # Your pybind11 C++ file
         include_dirs=[
             pybind11.get_include(),
             '../libs/API-DRFL/include'            # Path to Doosan DRFL.h
@@ -189,7 +190,7 @@ ext_modules = [
             'PocoNet',                      # Doosan dependency
         ],
         language='c++',
-        extra_compile_args=['-std=c++17'],   # Ensure C++17 or higher
+        extra_compile_args=['-std=c++17', '-DDRCF_VERSION=2'],   # Ensure C++17 or higher
     ),
 ]
 
