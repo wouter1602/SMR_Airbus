@@ -63,9 +63,10 @@ def main():
         # Step 5: Execute a simple joint motion (movej)
         # Target position in joint space (radians): [0, 0, 0, 0, 0, 0]
         # This moves all joints to zero position
-        target_position = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
-        velocity = 1.0  # rad/s
-        acceleration = 1.0  # rad/s²
+        # target_position = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        target_position = np.array([-69.47, 16.29, 90.08, 96.02, 70.34, -107.47], dtype=np.float32)
+        velocity = 5.0  # rad/s
+        acceleration = 5.0  # rad/s²
 
         print(f"Executing movej to position: {target_position}")
         if not robot.movej(
