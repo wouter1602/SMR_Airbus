@@ -13,6 +13,8 @@ import logging
 import asyncio
 import numpy as np
 import sys
+from pathlib import Path
+import json
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -94,8 +96,73 @@ async def wait_for_standby(timeout: float) -> bool:
     return True
 
 
-async def main():
+"""
+    Loading pose json
+"""
 
+async def load_poses(filepath: str | Path) -> list:
+    with open(filepath, "r") as f:
+        poses = json.load(f)
+    return poses
+
+MOVE_HANDLERS = {
+    "joint": robot.amovej,
+    "linear": robot.amovel,
+}
+
+async def execute_poses(pose: dict) -> None:
+    move_type = pose["move_type"]
+    handler = MOVE_HANDLERS.get(move_type)
+
+    if handler is None:
+        logger.warning(f"Wrong move type: {move_type}")
+        return
+
+    logger.debug(f"Executing pose: {pose['name']} [{pose['move_type']}]")
+
+    pose_array = np.array(pose["pose_array"], dtype=np.float32)
+
+    if not handler(pos = pose_array,
+        vel=SPEED,
+        acc=ACCELERATION,
+        time=0.0,
+        move_mode = drfl.MOVE_MODE.Absolute,
+        blending_type=drfl.BLENDING_SPEED_TYPE.Duplicate
+    ):
+        logger.error("Failed to execute amovej command")
+        robot.close_connection()
+        raise SystemExit(1)
+
+    if not await wait_for_standby(MOVE_TIMEOUT):
+        logger.error("Move timed out waiting for Standby state")
+        robot.close_connection()
+        raise SystemExit(1)
+
+    logger.info("Target Reached!")
+    await asyncio.sleep(POLL_INTERVAL)
+
+async def prompt_pose(poses: list) -> None:
+    while True:
+        print("\n Select pose:")
+        for i, pose in enumerate(poses, start=1):
+            print(f"    [{i}] {pose['name']} [{pose['move_type']}] {pose['pose_array']}")
+        print("    [q] quit")
+
+        choice = await asyncio.get_event_loop().run_in_executor(None, input, "> ")
+        choice = choice.strip()
+
+        if choice.lower() == "q":
+            logger.info("Received quit command")
+            break
+        if choice.isdigit() and 1 <= int(choice) <= len(poses):
+            await execute_poses(poses[int(choice) - 1])
+        else:
+            logger.info(F"Invalid input. Enter a number between 1 and {len(poses)}, or 'q'.")
+
+
+async def main():
+    filepath = sys.argv[1] if len(sys.argv) > 1 else "poses.json"
+    poses = await load_poses(filepath)
     # Setup callbacks
     robot.set_on_monitoring_access_control(on_monitoring_access_control)
     robot.set_on_monitoring_state(on_monitoring_state)
@@ -149,30 +216,7 @@ async def main():
 
     logger.info("---- Ready to Move ----")
 
-    input("press any button for the first pose")
-
-    target_pose = np.array([-69.47, 16.29, 90.08, 96.02, 70.34, -107.47], dtype=np.float32)
-    logger.info(f"Sending amovej to target: {target_pose}")
-
-    if not robot.amovej(
-        pos=target_pose,
-        vel=SPEED,
-        acc=ACCELERATION,
-        time=0.0,
-        move_mode = drfl.MOVE_MODE.Absolute,
-        blending_type=drfl.BLENDING_SPEED_TYPE.Duplicate
-    ):
-        logger.error("Failed to execute amovej command")
-        robot.close_connection()
-        raise SystemExit(1)
-
-    if not await wait_for_standby(MOVE_TIMEOUT):
-        logger.error("Move timed out waiting for Standby state")
-        robot.close_connection()
-        raise SystemExit(1)
-
-
-    logger.info("Target Reached!")
+    await prompt_pose(poses)
 
     robot.close_connection()
     logger.info("Connection closed")

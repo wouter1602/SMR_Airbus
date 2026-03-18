@@ -1,0 +1,26 @@
+[
+  {
+    "name": "home",
+    "move_type": "joint",
+    "pose_array": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "name": "Camera scan",
+    "move_type": "joint",
+    "pose_array": [
+      -69.47,
+      16.29,
+      90.08,
+      96.02,
+      70.34,
+      -107.47
+    ]
+  }
+]
