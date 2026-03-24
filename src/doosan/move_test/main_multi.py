@@ -15,9 +15,11 @@ from pathlib import Path
 import json
 
 from robot_worker import robot_worker, MOVE_TIMEOUT, POLL_INTERVAL
+from cognix import CognexCamera
 
-IP_ADDRESS = "192.168.0.50"
+IP_DOOSAN = "192.168.0.50"
 PORT = 12345
+IP_CAMERA_TCP = "192.168.0.12"
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -116,7 +118,7 @@ async def load_poses(filepath: str | Path) -> list:
         return json.load(f)
 
 
-async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Queue) -> None:
+async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Queue, camera: CognexCamera) -> None:
     loop = asyncio.get_running_loop()
     while True:
         print("\nSelect pose:")
@@ -133,7 +135,27 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         elif choice.lower() == "m":
             await toggle_air(command_queue, result_queue)
         elif choice.lower() == "t":
-            logger.info("Shoud trigger cam 1. Not yet implemented.")
+            # logger.info("Shoud trigger cam 1. Not yet implemented.")
+            # success = await camera.trigger()
+            # if success:
+            #     logger.info("Cam 1 triggered successfully")
+            # else:
+            #     logger.error("Failed to trigger cam 1")
+
+            cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
+            results = await camera.trigger_and_read(cells)
+
+            def to_float(v):
+                try:
+                    return float(v)
+                except ValueError:
+                    return None
+
+            float_results = [to_float(results[c]) for c in cells]
+            values = None if any(v is None for v in float_results) else np.array(float_results, dtype=np.float32)
+
+            logger.info(f"Detected cell @ location: {values}")
+
         elif choice.lower() == "c":
             arg = await get_array_input(loop)
             if arg is not None:
@@ -171,9 +193,20 @@ async def main() -> None:
     command_queue: mp.Queue = mp.Queue()
     result_queue: mp.Queue = mp.Queue()
 
+    cam = CognexCamera(IP_CAMERA_TCP,
+        username="admin",
+        password="",)
+    try:
+        await cam.connect() # Wait for camera to connect
+    except Exception as e:
+        logger.error(f"Failed to connect to camera (TCP): {e}")
+        raise SystemExit(1)
+
+    logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}")
+
     worker = mp.Process(
         target=robot_worker,
-        args=(command_queue, result_queue, IP_ADDRESS, PORT),
+        args=(command_queue, result_queue, IP_DOOSAN, PORT),
         daemon=True,
     )
     worker.start()
@@ -187,7 +220,7 @@ async def main() -> None:
 
     logger.info("---- Ready to Move ----")
 
-    await prompt_pose(poses, command_queue, result_queue)
+    await prompt_pose(poses, command_queue, result_queue, cam)
 
     command_queue.put(None)  # Graceful shutdown
     worker.join()
