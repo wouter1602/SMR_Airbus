@@ -8,6 +8,7 @@ import multiprocessing as mp
 import logging
 import asyncio
 import signal
+import doosan_drfl as drfl
 import numpy as np
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ import json
 
 from robot_worker import robot_worker, MOVE_TIMEOUT, POLL_INTERVAL
 
-IP_ADDRESS = "192.168.8.50"
+IP_ADDRESS = "192.168.0.50"
 PORT = 12345
 
 logging.basicConfig(
@@ -88,6 +89,11 @@ async def execute_poses(pose: dict, command_queue: mp.Queue, result_queue: mp.Qu
     logger.info("Target Reached!")
     await asyncio.sleep(POLL_INTERVAL)
 
+async def toggle_air(command_queue: mp.Queue, result_queue: mp.Queue) -> None:
+    command_queue.put(("toggle_air", drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1))
+
+    #TODO wait for return
+
 
 async def load_poses(filepath: str | Path) -> list:
     with open(filepath, "r") as f:
@@ -100,7 +106,7 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         print("\nSelect pose:")
         for i, pose in enumerate(poses, start=1):
             print(f"    [{i}] {pose['name']} [{pose['move_type']}] {pose['pose_array']}")
-        print("    [q] quit")
+        print("    [q] quit      [m] toggle air")
 
         choice = await loop.run_in_executor(None, input, "> ")
         choice = choice.strip()
@@ -108,6 +114,8 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         if choice.lower() == "q":
             logger.info("Received quit command")
             break
+        elif choice.lower() == "m":
+            await toggle_air(command_queue, result_queue)
         elif choice.isdigit() and 1 <= int(choice) <= len(poses):
             await execute_poses(poses[int(choice) - 1], command_queue, result_queue)
         else:

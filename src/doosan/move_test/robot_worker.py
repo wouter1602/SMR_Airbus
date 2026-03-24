@@ -16,6 +16,16 @@ logger = logging.getLogger(__name__)
 MOVE_TIMEOUT = 60.0   # seconds
 POLL_INTERVAL = 0.05  # seconds
 
+# Tool configuration
+TOOL_SHAPE_NAME = "Tool_Shape"
+TOOL_NAME = "Tool#20"
+TOOL_WEIGHT = 4.660 #kg
+TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
+TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
+
+
+MAX_FORCE = 30.0
+
 
 class RobotController:
 
@@ -111,10 +121,27 @@ class RobotController:
             if not once:
                 logger.info(f"Robot is still moving: {result}")
                 once = True
+
+            force: drfl.ROBOT_FORCE = self.robot.get_tool_force(
+                targetRef=drfl.COORDINATE_SYSTEM.Base
+            )
+
+            if force._fForce[3] > MAX_FORCE:
+                logger.info(f"Force exceeded: {force._fForce[3]} > {MAX_FORCE}")
+                self.robot.stop(
+                    stop_type=drfl.STOP_TYPE.Quick
+                )
+                return True
+
             if counter >= 1 / POLL_INTERVAL:
                 position: drfl.ROBOT_POSE = self.robot.get_current_pose(drfl.ROBOT_SPACE.Joint)
 
-                logger.info(f"Current pose is: {position._fPosition}")
+                force_: drfl.ROBOT_FORCE = self.robot.get_tool_force(
+                    targetRef=drfl.COORDINATE_SYSTEM.Base
+                )
+
+                # logger.info(f"Current pose is: {position._fPosition}")
+                logger.info(f"Current force is: {force_._fForce}")
                 counter = 0
             else:
                 counter = counter + 1
@@ -145,6 +172,28 @@ class RobotController:
         logger.info(f"Controller (DRCF) version: {version._szController}")
         logger.info(f"Library version: {self.robot.get_library_version()}")
 
+        # Set TCP options
+        success_setting_toolname =  self.robot.add_tool(
+            strSymbol=TOOL_NAME,
+            fWeight=TOOL_WEIGHT,
+            fCog=TOOL_CENTER,
+            fInertia=TOOL_INERTIA,
+        )
+
+        if success_setting_toolname:
+            if self.robot.set_tool(TOOL_NAME):
+                logger.debug(f"Set tool: {TOOL_NAME}")
+            else:
+                logger.debug(f"failed to set tool: {TOOL_NAME}")
+        else:
+            logger.debug(f"Failed to create tool with name: {TOOL_NAME}")
+
+        if self.robot.set_tool_shape(TOOL_SHAPE_NAME):
+            logger.debug(f"Set tool shape: {TOOL_SHAPE_NAME}")
+        else:
+            logger.debug(f"Failed to set tool shape: {TOOL_SHAPE_NAME}")
+
+
         # Get access control and set Servo On
         for attempt in range(10):
             logger.debug(f"Attempt {attempt}: gaining access control and setting servo on")
@@ -158,6 +207,7 @@ class RobotController:
                 continue
             break
 
+
         if not (self.get_control_access and self.is_in_standby):
             raise RuntimeError(
                 f"Failed to reach intended state — "
@@ -170,7 +220,17 @@ class RobotController:
         if not self.robot.set_robot_system(drfl.ROBOT_SYSTEM.Real):
             raise RuntimeError("Failed setting robot system to Real")
 
+
+
+        # if not self.robot.set_tool(TOOL_NAME):
+        #     raise RuntimeWarning(f"Failed to load tool with name: {TOOL_NAME}")
+        # if not self.robot.set_tool_shape(TOOL_SHAPE_NAME):
+        #     raise RuntimeWarning(f"Failed setting robot tool shape: '{TOOL_SHAPE_NAME}'")
+        # if not self.robot.set_workpiece_weight(TOOL_WEIGHT_NAME):
+        #     raise RuntimeWarning(f"Failed setting robot tool weight: '{TOOL_WEIGHT_NAME}'")
+
     def disconnect(self) -> None:
+        self.robot.del_tool(TOOL_NAME) #Remove tool NEEDS ROBOT_MODE MANUAL
         self.robot.close_connection()
         logger.info("Connection closed")
 
@@ -192,7 +252,18 @@ class RobotController:
                 logger.info("Shutdown command received")
                 break
 
+
             move_type, pose_array = command
+
+            if move_type == "toggle_air":
+
+                if self.robot.get_digital_output(pose_array):
+                    self.robot.set_digital_output(pose_array, False)
+                else:
+                    self.robot.set_digital_output(pose_array, True)
+                result_queue.put("done")
+                continue
+
             handler = self.move_handlers.get(move_type)
 
             if handler is None:
