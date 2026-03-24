@@ -92,7 +92,23 @@ async def execute_poses(pose: dict, command_queue: mp.Queue, result_queue: mp.Qu
 async def toggle_air(command_queue: mp.Queue, result_queue: mp.Queue) -> None:
     command_queue.put(("toggle_air", drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1))
 
-    #TODO wait for return
+async def get_array_input(loop) -> np.ndarray | None:
+    while True:
+        raw = await loop.run_in_executor(None, input, "> ")
+        raw = raw.strip()
+
+        if raw == "q":
+            return None
+
+        try:
+            values = np.fromstring(raw, dtype=np.float32, sep=" ")
+            if values.size != 6:
+                print(f"Expected 6 elements, got {values.size}. Try again (or 'q' to cancel).")
+                continue
+            logger.debug(f"Got array: {values}, with shape {values.shape}")
+            return values
+        except ValueError:
+            print("Invalid input. Enter 6 space-separated numbers (or 'q' to cancel).")
 
 
 async def load_poses(filepath: str | Path) -> list:
@@ -106,7 +122,7 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         print("\nSelect pose:")
         for i, pose in enumerate(poses, start=1):
             print(f"    [{i}] {pose['name']} [{pose['move_type']}] {pose['pose_array']}")
-        print("    [q] quit      [m] toggle air")
+        print("    [q] quit      [m] toggle air    [t] trigger cam 1    [c] costum coords")
 
         choice = await loop.run_in_executor(None, input, "> ")
         choice = choice.strip()
@@ -116,11 +132,23 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
             break
         elif choice.lower() == "m":
             await toggle_air(command_queue, result_queue)
+        elif choice.lower() == "t":
+            logger.info("Shoud trigger cam 1. Not yet implemented.")
+        elif choice.lower() == "c":
+            arg = await get_array_input(loop)
+            if arg is not None:
+                tmp_pose = {
+                    "move_type": "linear",
+                    "pose_array": [arg],
+                    "name": "Costum pose",
+                }
+                await execute_poses(tmp_pose, command_queue, result_queue)
+            else:
+                logger.info("costum coords input cancelled")
         elif choice.isdigit() and 1 <= int(choice) <= len(poses):
             await execute_poses(poses[int(choice) - 1], command_queue, result_queue)
         else:
             logger.info(f"Invalid input. Enter a number between 1 and {len(poses)}, or 'q'.")
-
 
 # ─────────────────────────────────────────────
 #  Main
