@@ -135,13 +135,6 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         elif choice.lower() == "m":
             await toggle_air(command_queue, result_queue)
         elif choice.lower() == "t":
-            # logger.info("Shoud trigger cam 1. Not yet implemented.")
-            # success = await camera.trigger()
-            # if success:
-            #     logger.info("Cam 1 triggered successfully")
-            # else:
-            #     logger.error("Failed to trigger cam 1")
-
             cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
             results = await camera.trigger_and_read(cells)
 
@@ -155,6 +148,14 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
             values = None if any(v is None for v in float_results) else np.array(float_results, dtype=np.float32)
 
             logger.info(f"Detected cell @ location: {values}")
+
+            if values is not None:
+                tmp_pose = {
+                    "move_type": "linear",
+                    "pose_array": [values],
+                    "name": "Detected cell pose",
+                }
+                await execute_poses(tmp_pose, command_queue, result_queue)
 
         elif choice.lower() == "c":
             arg = await get_array_input(loop)

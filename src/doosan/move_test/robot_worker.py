@@ -33,8 +33,8 @@ class RobotController:
         self,
         ip_address: str,
         port: int,
-        speed: float = 5.0,
-        acceleration: float = 5.0,
+        speed: float = 20.0,
+        acceleration: float = 10.0,
         lin_speed: float = 60.0,
         lin_acceleration: float = 35.0,
     ) -> None:
