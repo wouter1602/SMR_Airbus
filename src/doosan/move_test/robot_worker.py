@@ -252,15 +252,24 @@ class RobotController:
                 logger.info("Shutdown command received")
                 break
 
-
-            move_type, pose_array = command
+            if len(command) == 2:
+                move_type, pose_array = command
+                output = None
+            elif len(command) == 3:
+                move_type, pose_array, output = command
+            else:
+                continue
 
             if move_type == "toggle_air":
 
-                if self.robot.get_digital_output(pose_array):
-                    self.robot.set_digital_output(pose_array, False)
+                if output is None:
+
+                    if self.robot.get_digital_output(pose_array):
+                        self.robot.set_digital_output(pose_array, False)
+                    else:
+                        self.robot.set_digital_output(pose_array, True)
                 else:
-                    self.robot.set_digital_output(pose_array, True)
+                    self.robot.set_digital_output(pose_array, output)
                 result_queue.put("done")
                 continue
 
