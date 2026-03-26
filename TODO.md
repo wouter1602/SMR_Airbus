@@ -10,7 +10,7 @@
 - [ ] Remove paper / foam until panel visible function.
   - [ ] Different trigger method for detection?
   - [ ] Panel shape check?
-- [ ] mail frank -- **Riccccccccck**
+- [x] mail frank -- **Riccccccccck**
   - [ ] force feedback
   - [ ] springs?
   - [ ] silent
