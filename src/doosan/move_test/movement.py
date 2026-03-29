@@ -150,10 +150,15 @@ async def run_sequence(
             pose_array = None
             while pose_array is None:
                 logger.info("Triggering camera...")
-                if step["name"] == "Scan small":
+                if step["name"] == "Scan type 1":
+                    cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
+                elif step["name"] == "Scan type 2":
+                    cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
+                elif step["name"] == "Scan type 3":
                     cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
                 else:
-                    cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
+                    raise ValueError(f"Unknown scan type: {step['name']}")
+
 
                 results = await camera.trigger_and_read(cells)
 

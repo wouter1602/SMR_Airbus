@@ -60,13 +60,15 @@ async def wait_for_motion_complete(
     finally:
         _waiting_on_mwait = False
 
-    if result != "done":
-        raise RuntimeError(result)
-
+    if len(result) == 2:
+        logger.debug(f"Stopped based on: {result[0]}. With result: {result[1]}")
+    else:
+        if result != "done":
+            raise RuntimeError(result)
 
 async def execute_poses(pose: dict, command_queue: mp.Queue, result_queue: mp.Queue) -> None:
     move_type = pose["move_type"]
-    if move_type not in ("joint", "linear"):
+    if move_type not in ("joint", "linear", "force"):
         logger.warning(f"Wrong move type: {move_type}")
         return
 
@@ -135,7 +137,7 @@ async def prompt_pose(poses: list, command_queue: mp.Queue, result_queue: mp.Que
         elif choice.lower() == "m":
             await toggle_air(command_queue, result_queue)
         elif choice.lower() == "t":
-            cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
+            cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
             results = await camera.trigger_and_read(cells)
 
             def to_float(v):
@@ -199,11 +201,10 @@ async def main() -> None:
         password="",)
     try:
         await cam.connect() # Wait for camera to connect
+        logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}")
     except Exception as e:
         logger.error(f"Failed to connect to camera (TCP): {e}")
-        raise SystemExit(1)
-
-    logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}")
+        # raise SystemExit(1)
 
     worker = mp.Process(
         target=robot_worker,

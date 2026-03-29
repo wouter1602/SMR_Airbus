@@ -19,12 +19,23 @@ POLL_INTERVAL = 0.05  # seconds
 # Tool configuration
 TOOL_SHAPE_NAME = "Tool_Shape"
 TOOL_NAME = "Tool#20"
+# TOOL_WEIGHT = 4.430 #kg
+# TOOL_CENTER = np.array([23.610, -4.710, 73.710], dtype=np.float32) # Cz, Cy, Cz
+# TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 TOOL_WEIGHT = 4.660 #kg
 TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
 TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 
 
-MAX_FORCE = 30.0
+MAX_FORCE = 5.0 * 10
+
+# Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
+# COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
+COMPLIANCE_STIFFNESS = np.array([2500.0, 2500.0, 1500.0, 200.0, 200.0, 200.0], dtype=np.float32)
+
+# Force probe — apply 5N in -Z direction only
+FORCE_PROBE_FD  = np.array([0.0, 0.0, 5.0, 0.0, 0.0, 0.0], dtype=np.float32)  # desired force vector
+FORCE_PROBE_DIR = np.array([0,   0,    1,   0,   0,   0  ], dtype=np.uint8)     # 1 = axis active
 
 
 class RobotController:
@@ -37,6 +48,8 @@ class RobotController:
         acceleration: float = 10.0,
         lin_speed: float = 60.0,
         lin_acceleration: float = 35.0,
+        force_speed: float = 5.0,
+        force_acceleration: float = 5.0,
     ) -> None:
         self.ip_address = ip_address
         self.port = port
@@ -44,6 +57,8 @@ class RobotController:
         self.acceleration = acceleration
         self.lin_speed = lin_speed
         self.lin_acceleration = lin_acceleration
+        self.force_speed = force_speed
+        self.force_acceleration = force_acceleration
 
         self.robot = drfl.CDRFLEx()
 
@@ -77,19 +92,28 @@ class RobotController:
 
     # ── Move commands ──
 
-    def _amovej(self, pose: np.ndarray) -> bool:
+    def _amovej(self,
+        pose: np.ndarray,
+        speed: float | None = None,
+        acc: float | None = None
+    ) -> bool:
         return self.robot.amovej(
             pos=pose,
-            vel=self.speed,
-            acc=self.acceleration,
+            vel=speed if speed is not None else self.speed,
+            acc=acc if acc is not None else self.acceleration,
             time=0.0,
             move_mode=drfl.MOVE_MODE.Absolute,
             blending_type=drfl.BLENDING_SPEED_TYPE.Duplicate,
         )
 
-    def _amovel(self, pose: np.ndarray) -> bool:
-        velocity = np.array([self.lin_speed, 0], dtype=np.float32)
-        acceleration = np.array([self.lin_acceleration, 0], dtype=np.float32)
+    def _amovel(self,
+        pose: np.ndarray,
+        speed: float | None = None,
+        acc: float | None = None
+    ) -> bool:
+        velocity = np.array([speed if speed is not None else self.lin_speed, 0], dtype=np.float32)
+        acceleration = np.array([acc if acc is not None else self.lin_acceleration, 0], dtype=np.float32)
+
         return self.robot.amovel(
             pos=pose,
             vel=velocity,
@@ -101,11 +125,43 @@ class RobotController:
             app_type=drfl.DR_MV_APP.NoApp,
         )
 
+    def _enable_compliance(self) -> bool:
+        """
+        Enable task compliance control with the configured stifness.
+        """
+        return self.robot.task_compliance_ctrl(
+            fTargetStiffness=COMPLIANCE_STIFFNESS,
+            eForceReference=drfl.COORDINATE_SYSTEM.Base,
+            time=0.0,
+        )
+
+    def _disable_compliance(self) -> bool:
+        """
+        Disable task compliance control.
+        """
+        return self.robot.release_compliance_ctrl()
+
+    def _amove_force(self, pose: np.ndarray) -> bool:
+
+        time.sleep(0.5)
+        logger.info("set desired force")
+        if not self.robot.set_desired_force(
+            fTargetForce=FORCE_PROBE_FD,
+            iTargetDirection=FORCE_PROBE_DIR,
+            eForceMode=drfl.FORCE_MODE.Absolute,
+            eForceReference=drfl.COORDINATE_SYSTEM.Base,
+            time=0.0,
+        ):
+            return False
+
+        logger.info("amovel")
+        return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
+
     # --- Check for movement ---
     def is_moving(self, timeout: float) -> bool:
 
         once: bool = False
-        counter: int = 0
+        # counter: int = 0
         time.sleep(0.5)
 
         now = time.time()
@@ -126,31 +182,16 @@ class RobotController:
                 targetRef=drfl.COORDINATE_SYSTEM.Base
             )
 
-            if force._fForce[3] > MAX_FORCE:
-                logger.info(f"Force exceeded: {force._fForce[3]} > {MAX_FORCE}")
-                self.robot.stop(
-                    stop_type=drfl.STOP_TYPE.Quick
-                )
-                return True
+            logger.debug(f"Current Z-force: {force._fForce[2]} N")
 
-            if counter >= 1 / POLL_INTERVAL:
-                position: drfl.ROBOT_POSE = self.robot.get_current_pose(drfl.ROBOT_SPACE.Joint)
-
-                force_: drfl.ROBOT_FORCE = self.robot.get_tool_force(
-                    targetRef=drfl.COORDINATE_SYSTEM.Base
-                )
-
-                # logger.info(f"Current pose is: {position._fPosition}")
-                logger.info(f"Current force is: {force_._fForce}")
-                counter = 0
-            else:
-                counter = counter + 1
             time.sleep(POLL_INTERVAL)
 
     # ── Setup / teardown ──
 
     def connect(self) -> None:
-        """Open connection and bring robot to ready state. Raises RuntimeError on failure."""
+        """
+        Open connection and bring robot to ready state. Raises RuntimeError on failure.
+        """
         self.robot.set_on_monitoring_access_control(self._on_monitoring_access_control)
         self.robot.set_on_monitoring_state(self._on_monitoring_state)
 
@@ -184,9 +225,18 @@ class RobotController:
             if self.robot.set_tool(TOOL_NAME):
                 logger.debug(f"Set tool: {TOOL_NAME}")
             else:
-                logger.debug(f"failed to set tool: {TOOL_NAME}")
+                tool = self.robot.get_tool()
+                logger.debug(f"failed to set tool: {TOOL_NAME}, current tool: {tool}")
         else:
             logger.debug(f"Failed to create tool with name: {TOOL_NAME}")
+            if self.robot.set_tool(TOOL_NAME):
+                logger.debug(f"Setting existing tool: {TOOL_NAME}")
+            else:
+                logger.debug(f"Failed to create and assign tool with name: {TOOL_NAME}")
+                logger.debug("Continuing with existing tool")
+
+        tool = self.robot.get_tool()
+        logger.debug(f"Current tool: {tool}")
 
         if self.robot.set_tool_shape(TOOL_SHAPE_NAME):
             logger.debug(f"Set tool shape: {TOOL_SHAPE_NAME}")
@@ -220,14 +270,6 @@ class RobotController:
         if not self.robot.set_robot_system(drfl.ROBOT_SYSTEM.Real):
             raise RuntimeError("Failed setting robot system to Real")
 
-
-
-        # if not self.robot.set_tool(TOOL_NAME):
-        #     raise RuntimeWarning(f"Failed to load tool with name: {TOOL_NAME}")
-        # if not self.robot.set_tool_shape(TOOL_SHAPE_NAME):
-        #     raise RuntimeWarning(f"Failed setting robot tool shape: '{TOOL_SHAPE_NAME}'")
-        # if not self.robot.set_workpiece_weight(TOOL_WEIGHT_NAME):
-        #     raise RuntimeWarning(f"Failed setting robot tool weight: '{TOOL_WEIGHT_NAME}'")
 
     def disconnect(self) -> None:
         self.robot.del_tool(TOOL_NAME) #Remove tool NEEDS ROBOT_MODE MANUAL
@@ -271,6 +313,31 @@ class RobotController:
                 else:
                     self.robot.set_digital_output(pose_array, output)
                 result_queue.put("done")
+                continue
+
+            if move_type == "force":
+                logger.info("setting compliance")
+                if not self._enable_compliance():
+                    result_queue.put("error:Failed to enable compliance control")
+                    continue
+
+                logger.info("amove_force")
+                if not self._amove_force(pose_array):
+                    self._disable_compliance()
+                    result_queue.put("error:Force move command failed")
+                    continue
+
+                logger.info("is_moving")
+                if not self.is_moving(MOVE_TIMEOUT):
+                    self._disable_compliance()
+                    result_queue.put("error:Force movement timed out")
+                    continue
+
+                contact_pose: drfl.ROBOT_POSE = self.robot.get_current_pose(
+                    drfl.ROBOT_SPACE.Task
+                    )
+                self._disable_compliance()
+                result_queue.put(("force_done", list(contact_pose._fPosition)))
                 continue
 
             handler = self.move_handlers.get(move_type)
