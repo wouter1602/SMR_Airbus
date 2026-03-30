@@ -146,17 +146,6 @@ class RobotController:
 
     def _amove_force(self, pose: np.ndarray) -> bool:
 
-        time.sleep(0.5)
-        logger.info("set desired force")
-        # if not self.robot.set_desired_force(
-        #     fTargetForce=FORCE_PROBE_FD,
-        #     iTargetDirection=FORCE_PROBE_DIR,
-        #     eForceMode=drfl.FORCE_MODE.Absolute,
-        #     eForceReference=drfl.COORDINATE_SYSTEM.Base,
-        #     time=0.0,
-        # ):
-        #     return False
-
         logger.info("amovel")
         self.in_force_mode = True
         return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
@@ -165,7 +154,6 @@ class RobotController:
     def is_moving(self, timeout: float) -> bool:
 
         once: bool = False
-        # counter: int = 0
         time.sleep(0.5)
 
         now = time.time()
@@ -192,7 +180,7 @@ class RobotController:
                     self.robot.stop(
                         stop_type=drfl.STOP_TYPE.Slow
                     )
-                    logger.warning(f"Robot exceeded too mutch force in Z axis: {force._fForce[2]} N")
+                    logger.warning(f"Robot exceeded too much force in Z axis: {force._fForce[2]} N")
                     return True
 
 
@@ -328,18 +316,15 @@ class RobotController:
                 continue
 
             if move_type == "force":
-                logger.info("setting compliance")
                 if not self._enable_compliance():
                     result_queue.put("error:Failed to enable compliance control")
                     continue
 
-                logger.info("amove_force")
                 if not self._amove_force(pose_array):
                     self._disable_compliance()
                     result_queue.put("error:Force move command failed")
                     continue
 
-                logger.info("is_moving")
                 if not self.is_moving(MOVE_TIMEOUT):
                     self._disable_compliance()
                     result_queue.put("error:Force movement timed out")

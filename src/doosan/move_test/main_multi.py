@@ -61,7 +61,7 @@ async def wait_for_motion_complete(
         _waiting_on_mwait = False
 
     if len(result) == 2:
-        logger.debug(f"Stopped based on: {result[0]}. With result: {result[1]}")
+        logger.debug(f"Stopped based on: {result[0]}. With result: {result[1]}") # Set result to variable to be used
     else:
         if result != "done":
             raise RuntimeError(result)

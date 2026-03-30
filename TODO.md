@@ -1,9 +1,9 @@
 # TODO list
 
 - [ ] Force feedback. -- **Wouter** 
-  - [ ] Set max newton Z-axis.
-  - [ ] Get stop position.
-  - [ ] Continue working after stop.
+  - [ X ] Set max newton Z-axis.
+  - [ X ] Get stop position.
+  - [ X ] Continue working after stop.
 - [ ] Set fixed scan positions (always **n** cm above panel).
 - [ ] Create multiple pickups. -- **Bas**
   - [ ] Set offset in X and y axis for new location.
