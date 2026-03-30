@@ -7,12 +7,15 @@ import socket
 import time
 import urllib.request
 import io
+import os
 from enum import IntEnum
-
+from openpyxl import Workbook, load_workbook
+from datetime import datetime
 try:
     from PIL import Image
 except ImportError:
     Image = None
+
 
 
 class CognexCamera:
@@ -348,23 +351,107 @@ def scan_2():
     values = np.array([float(data[c]) if data[c] is not None else np.nan for c in position_cells],dtype=np.float32)
     return values
 #def scan_1():
-    
-# ── main ──────────────────────────────────────────────────────────────
+def log_wing(wing_id):
+    # Check if file exists
+    if os.path.exists(FILE_NAME):
+        workbook = load_workbook(FILE_NAME)
+        sheet = workbook.active
+    else:
+        workbook = Workbook()
+        sheet = workbook.active
+        # Add headers
+        sheet.append(["Wing ID", "Timestamp"])
 
+    # Get current timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Append data (new row automatically)
+    sheet.append([wing_id, timestamp])
+
+    # Save file
+    workbook.save(FILE_NAME)
+
+
+
+
+# Fixed positions
+POSITIONS = [
+    "1-1","1-2","1-3","1-4","1-5","1-6","1-7","1-8",
+    "2-1","2-2","2-3","2-4","2-5","2-6","2-7","2-8"
+]
+
+current_row = None
+current_wing = None
+
+
+def _load_sheet():
+    if os.path.exists(FILE_NAME):
+        wb = load_workbook(FILE_NAME)
+        sheet = wb.active
+    else:
+        wb = Workbook()
+        sheet = wb.active
+
+        # Header
+        headers = ["Wing ID", "Timestamp"] + POSITIONS
+        sheet.append(headers)
+
+    return wb, sheet
+def start_wing(wing_id):
+    global current_row, current_wing
+
+    wb, sheet = _load_sheet()
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Create empty row for wing + 16 positions
+    row_data = [wing_id, timestamp] + [""] * len(POSITIONS)
+    sheet.append(row_data)
+
+    current_row = sheet.max_row
+    current_wing = wing_id
+
+    wb.save(FILE_NAME)
+def add_panel(position, barcode):
+    global current_row
+
+    if current_row is None:
+        raise Exception("Start a wing first using start_wing(wing_id)")
+
+    if position not in POSITIONS:
+        raise ValueError(f"Invalid position: {position}")
+
+    wb, sheet = _load_sheet()
+
+    # Find column index (offset by 2 because of Wing ID + Timestamp)
+    col_index = POSITIONS.index(position) + 3
+
+    sheet.cell(row=current_row, column=col_index).value = barcode
+
+    wb.save(FILE_NAME)
+#------
+FILE_NAME = "wing_panels.xlsx"    
+
+
+ 
 cam = CognexCamera("192.168.0.12", username="admin", password="")
 cam2= CognexCamera("192.168.0.10", username='admin', password="")
 cam.connect()
-output=scan_box_3()
-print(output)
+cam2.connect()
+cam2.trigger()
+wingID=cam2.read_cell("C2")
+start_wing(wingID)
+print(wingID)
+panelID=cam2.read_cell("C4")
+place="2-2" # if it needs to be a different format, let me know
+add_panel("2-2",panelID)
+
+
+#output=scan_box_3()
+#print(output)
 # move to scan position --> only if output == 5 / panel.right else stop or move to bin
-pickup=scan_3()
-print(pickup)
+#pickup=scan_3()
+#print(pickup)
 cam.disconnect()
-
-
-
-
-
-
-
+cam2.disconnect()
 
