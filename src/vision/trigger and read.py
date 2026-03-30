@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Cognex In-Sight camera – simple Python driver
 Connects via ISNM (TCP port 10000)
@@ -176,7 +177,7 @@ if __name__ == "__main__":
     # --- trigger ---
     success = cam.trigger()
     print("Trigger:", success)
-   
+
     cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
     results = cam.trigger_and_read(cells)
 

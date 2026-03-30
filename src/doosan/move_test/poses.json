@@ -1,0 +1,218 @@
+[
+  {
+    "name": "home",
+    "move_type": "joint",
+    "pose_array": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "name": "Camera scan",
+    "move_type": "joint",
+    "pose_array": [
+      -69.47,
+      16.29,
+      90.08,
+      96.02,
+      70.34,
+      -107.47
+    ]
+  },
+  {
+    "name": "Camera scan V2",
+    "move_type": "joint",
+    "pose_array": [
+      -69.47,
+      16.56,
+      90.80,
+      96.37,
+      70.43,
+      -108.51
+    ]
+  },
+  {
+    "name": "Camera scan V2",
+    "move_type": "linear",
+    "pose_array": [
+      483.39,
+      -653.08,
+      579.96,
+      179.99,
+      -90.01,
+      179.96
+    ]
+  },
+  {
+    "name": "pickup",
+    "move_type": "linear",
+    "pose_array": [
+      346.548,
+      -884.656,
+      -122.560,
+      124.830,
+      179.820,
+      153.898
+    ]
+  },
+  {
+    "name": "Camera scan + 20 cm",
+    "move_type": "linear",
+    "pose_array": [
+      483.43,
+      -653.05,
+      789.95,
+      180.0,
+      -90.01,
+      179.95
+    ]
+  },
+  {
+    "name": "scan_box",
+    "move_type": "linear",
+    "pose_array": [
+      370.000,
+      -761.000,
+      -939.000,
+      90.0,
+      -90.0,
+      -90.0
+    ]
+  },
+  {
+    "name": "force test",
+    "move_type": "linear",
+    "pose_array": [
+      1060.42,
+      -653.08,
+      579.96,
+      179.99,
+      -90.01,
+      179.96
+    ]
+  },
+  {
+    "name": "Spot 1-4 up",
+    "move_type": "linear",
+    "pose_array": [
+      -190.45,
+      918.52,
+      92.14,
+      70.41,
+      178.47,
+      69.70
+    ]
+  },
+  {
+    "name": "Spot 1-4",
+    "move_type": "linear",
+    "pose_array": [
+      -190.45,
+      918.52,
+      42.14,
+      70.41,
+      178.47,
+      69.70
+    ]
+  },
+  {
+    "name": "Spot 1-5 up",
+    "move_type": "linear",
+    "pose_array": [
+      179.14,
+      919.95,
+      92.70,
+      62.39,
+      178.90,
+      61.86
+    ]
+  },
+  {
+    "name": "Spot 1-5",
+    "move_type": "linear",
+    "pose_array": [
+      179.14,
+      919.95,
+      42.70,
+      62.39,
+      178.90,
+      61.86
+    ]
+  },
+  {
+    "name": "Spot 2-4 up",
+    "move_type": "linear",
+    "pose_array": [
+      -188.22,
+      385.04,
+      80.93,
+      44.69,
+      178.40,
+      -136.12
+    ]
+  },
+  {
+    "name": "Spot 2-4",
+    "move_type": "linear",
+    "pose_array": [
+      -188.22,
+      385.04,
+      30.93,
+      44.69,
+      178.40,
+      -136.12
+    ]
+  },
+  {
+    "name": "Spot 2-5 up",
+    "move_type": "linear",
+    "pose_array": [
+      182.04,
+      386.44,
+      80.00,
+      73.97,
+      179.32,
+      -107.00
+    ]
+  },
+  {
+    "name": "Spot 2-5",
+    "move_type": "linear",
+    "pose_array": [
+      182.04,
+      386.44,
+      29.51,
+      73.97,
+      179.32,
+      -107.00
+    ]
+  },
+  {
+    "name": "PRE-scan QR",
+    "move_type": "joint",
+    "pose_array": [
+      88.55,
+      30.85,
+      99.73,
+      2.53,
+      64.13,
+      -182.59
+    ]
+  },
+  {
+    "name": "Puckup above",
+    "move_type": "linear",
+    "pose_array": [
+      391.878,
+      -497.378,
+      90.00,
+      -90.0,
+      180.0,
+      90.0
+    ]
+  }
+]
