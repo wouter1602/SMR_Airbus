@@ -14,7 +14,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 MOVE_TIMEOUT = 60.0   # seconds
-POLL_INTERVAL = 0.05  # seconds
+POLL_INTERVAL = 0.01  # seconds
 
 # Tool configuration
 TOOL_SHAPE_NAME = "Tool_Shape"
@@ -27,7 +27,7 @@ TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
 TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 
 
-MAX_FORCE = 5.0 * 10
+MAX_FORCE = 6.0
 
 # Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
 # COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
@@ -71,6 +71,8 @@ class RobotController:
             "joint": self._amovej,
             "linear": self._amovel,
         }
+
+        self.in_force_mode: bool = False
 
     # ── Callbacks ──
 
@@ -139,22 +141,24 @@ class RobotController:
         """
         Disable task compliance control.
         """
+        self.in_force_mode = False
         return self.robot.release_compliance_ctrl()
 
     def _amove_force(self, pose: np.ndarray) -> bool:
 
         time.sleep(0.5)
         logger.info("set desired force")
-        if not self.robot.set_desired_force(
-            fTargetForce=FORCE_PROBE_FD,
-            iTargetDirection=FORCE_PROBE_DIR,
-            eForceMode=drfl.FORCE_MODE.Absolute,
-            eForceReference=drfl.COORDINATE_SYSTEM.Base,
-            time=0.0,
-        ):
-            return False
+        # if not self.robot.set_desired_force(
+        #     fTargetForce=FORCE_PROBE_FD,
+        #     iTargetDirection=FORCE_PROBE_DIR,
+        #     eForceMode=drfl.FORCE_MODE.Absolute,
+        #     eForceReference=drfl.COORDINATE_SYSTEM.Base,
+        #     time=0.0,
+        # ):
+        #     return False
 
         logger.info("amovel")
+        self.in_force_mode = True
         return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
 
     # --- Check for movement ---
@@ -178,11 +182,19 @@ class RobotController:
                 logger.info(f"Robot is still moving: {result}")
                 once = True
 
-            force: drfl.ROBOT_FORCE = self.robot.get_tool_force(
-                targetRef=drfl.COORDINATE_SYSTEM.Base
-            )
+            if self.in_force_mode:
+                force: drfl.ROBOT_FORCE = self.robot.get_tool_force(
+                    targetRef=drfl.COORDINATE_SYSTEM.Base
+                )
+                logger.debug(f"Current Z-force: {force._fForce[2]} N")
 
-            logger.debug(f"Current Z-force: {force._fForce[2]} N")
+                if force._fForce[2] > MAX_FORCE:
+                    self.robot.stop(
+                        stop_type=drfl.STOP_TYPE.Slow
+                    )
+                    logger.warning(f"Robot exceeded too mutch force in Z axis: {force._fForce[2]} N")
+                    return True
+
 
             time.sleep(POLL_INTERVAL)
 
