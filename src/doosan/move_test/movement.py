@@ -18,6 +18,8 @@ IP_DOOSAN = "192.168.0.50"
 PORT_DOOSAN = 12345
 IP_CAMERA_TCP = "192.168.0.12"
 
+FORCE_Z_AXIS_DOWN = 100.0 # in mm
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - [%(levelname)s] - %(message)s",
@@ -26,13 +28,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _currently_moving: bool = False
+_current_force_pose: np.ndarray | None = None
 
 
 async def wait_for_motion_complete(
     result_queue: mp.Queue,
     timeout: float = MOVE_TIMEOUT,
 ) -> None:
-    global _currently_moving
+    global _currently_moving, _current_force_pose
     loop = asyncio.get_running_loop()
     _currently_moving = True
 
@@ -44,8 +47,12 @@ async def wait_for_motion_complete(
     finally:
         _currently_moving = False
 
-    if result != "done":
-        raise RuntimeError(result)
+    if len(result) == 2:
+        logger.debug(f"Stopped based on: {result[0]}. With result: {result[1]}") # Set result to variable to be used
+        _current_force_pose = result[1]
+    else:
+        if result != "done":
+            raise RuntimeError(result)
 
 async def execute_poses(
     pose: dict,
@@ -53,7 +60,7 @@ async def execute_poses(
     result_queue: mp.Queue
 ) -> None:
     move_type = pose["move_type"]
-    if move_type not in ("joint", "linear"):
+    if move_type not in ("joint", "linear", "force"):
         logger.warning(f"Wrong move type: {move_type}")
         return
 
@@ -159,7 +166,6 @@ async def run_sequence(
                 else:
                     raise ValueError(f"Unknown scan type: {step['name']}")
 
-
                 results = await camera.trigger_and_read(cells)
 
                 def to_float(v):
@@ -205,6 +211,29 @@ async def run_sequence(
             await toggle_air(command_queue, result_queue, index=index, output=output)
             state = "ON" if output else ("OFF" if output is False else "TOGGLE")
             logger.info(f"Air set: index={raw_index} → {state}")
+
+        elif step_type == "calibrate":
+            # move to start calibrate
+            # move to end calibrate
+            #
+            name = step["name"]
+            if name not in poses:
+                logger.error(f"Pose `{name}` not found in loaded poses")
+                raise SystemExit(1)
+            pose = poses[name]
+            await execute_poses(pose, command_queue, result_queue) # moving to start of the calibration pose
+
+            coords = pose["pose_array"]
+            coords[2] = coords[2] - FORCE_Z_AXIS_DOWN # lower position.
+
+            pose["pose_array"] = coords
+            pose["move_type"] = "force"
+            logger.info(f"new pose: {pose['pose_array']}")
+
+            await asyncio.sleep(0.5)
+            await execute_poses(pose, command_queue, result_queue) # moving to end of the calibration pose
+
+            logger.info(f"pose is: {_current_force_pose}")
 
         else:
             logger.warning(f"Unknown step type '{step_type}', skipping")

@@ -38,7 +38,8 @@
     { "name": "Camera scan type 3 [J]", "move_type": "joint", "pose_array": [ -69.47, 16.35, 90.24, 96.09, 70.35, -107.67 ] },
     { "name": "Camera scan type 3 [L]", "move_type": "linear", "pose_array": [ 483.39, -653.08, 587.96, 179.99, -90.01, 179.96 ] },
     { "name": "Camera scan type 2 [J]", "move_type": "joint", "pose_array": [ -106.19, 26.46, 75.9, 86.43, 105.79, -102.89 ] },
-    { "name": "Camera scan type 2 [L]", "move_type": "linear", "pose_array": [ 5.93, -799.33, 587.96, 179.99, -90.02, 179.97 ] }
+    { "name": "Camera scan type 2 [L]", "move_type": "linear", "pose_array": [ 5.93, -799.33, 587.96, 179.99, -90.02, 179.97 ] },
+    { "name": "pickup type 1", "move_type": "linear", "pose_array": [ 906.77, -501.94, -84.75, 108.68, -179.12, 108.91]}
   ],
   "sequences": {
     "Move 1-3": [
@@ -190,6 +191,11 @@
       {"type": "wait", "seconds": 0.8},
       {"type": "pose", "name": "Spot 2-7 up"},
       {"type": "pose", "name": "Center table"}
+    ],
+    "force test": [
+      {"type": "pose", "name": "Camera scan type 1 [L]"},
+      {"type": "calibrate", "name": "pickup type 1"},
+      {"type": "wait", "seconds": 60}
     ]
   }
 }

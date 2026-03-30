@@ -116,6 +116,8 @@ class RobotController:
         velocity = np.array([speed if speed is not None else self.lin_speed, 0], dtype=np.float32)
         acceleration = np.array([acc if acc is not None else self.lin_acceleration, 0], dtype=np.float32)
 
+        logger.info(f"amovel to pose {pose}")
+
         return self.robot.amovel(
             pos=pose,
             vel=velocity,
@@ -146,7 +148,9 @@ class RobotController:
 
     def _amove_force(self, pose: np.ndarray) -> bool:
 
-        logger.info("amovel")
+        time.sleep(0.5)
+
+        logger.info(f"amovel force to pose {pose}")
         self.in_force_mode = True
         return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
 
