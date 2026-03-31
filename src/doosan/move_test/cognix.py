@@ -5,6 +5,7 @@ import numpy as np
 import time
 import urllib.request
 import io
+import logging
 
 from typing import Tuple
 from enum import IntEnum
@@ -16,6 +17,8 @@ except ImportError:
 
 TRIGGER_WAIT_BOX = 1.0
 TRIGGER_WAIT_CELL = 2.0
+
+logger = logging.getLogger(__name__)
 
 class PickupType(IntEnum):
     Empty = 0
@@ -97,7 +100,15 @@ class CognexCamera:
     async def trigger_and_read_box(self, cells):
         await self.trigger()
         await asyncio.sleep(TRIGGER_WAIT_BOX)
-        return {cell: await self.read_cell(cell) for cell in cells}
+        try:
+            result = {cell: await self.read_cell(cell) for cell in cells}
+        except Exception as e:
+            logger.error(f"trigger_and_read_box failed: {e}")
+            return {None}
+        for cell, val in result.items():
+            if val is None:
+                logger.warning(f"read_cell({cell}) returned None")
+        return result
 
     async def trigger_and_read_scan(self, cells):
         """
@@ -107,7 +118,11 @@ class CognexCamera:
         """
         await self.trigger()
         await asyncio.sleep(TRIGGER_WAIT_CELL)
-        return {cell: await self.read_cell(cell) for cell in cells}
+        result = {cell: await self.read_cell(cell) for cell in cells}
+        for cell, val in result.items():
+            if val is None:
+                logger.warning(f"read_cell({cell}) returned None")
+        return result
 
     async def set_online(self):
         await self._send("SO1")
@@ -149,19 +164,25 @@ class CognexCamera:
 
     async def change_job_box(self):
         await self._send("SIA0261")
+        await asyncio.sleep(0.8)
 
     async def change_job_scan(self):
         await self._send("SIA0260")
+        await asyncio.sleep(0.8)
 
     async def scan_box(self, type: int) -> Tuple[PickupType, np.ndarray | None]:
 
-        def _convert(value) -> int | str:
+        def _convert(value) -> bool:
+            logger.debug(f"Value to convert: {value}")
             if value == '#ERR':
-                return '#ERR'
-            elif float(value) == 1.0:
-                return 1
-            else:
-                return 0
+                return False
+            try:
+                return True if float(value) == 1.0 else False
+            except (ValueError, TypeError):
+                return False
+            except Exception as e:
+                logger.error(f"_convert failed: {e}")
+                return False
 
         position_cells = ["A42", "B42", "C42", "D42", "E42", "F42", "G42"]
 
@@ -180,13 +201,13 @@ class CognexCamera:
         left_gap = _convert(scan_box_result['G42'])
 
         # decide output
-        if empty == 1:
+        if empty:
             return (PickupType.Empty, None)
-        elif paper == 1:
+        elif paper:
             return (PickupType.Paper, None)
-        elif foam == 1:
+        elif foam:
             return (PickupType.Foam, None)
-        elif panel == 1:
+        elif panel:
             if type == 1:
                 await self.change_job_scan()
                 position_cells_scan = ["Q35"]
@@ -212,9 +233,9 @@ class CognexCamera:
                         return (PickupType.Wrong_Panel, None)
 
             elif type == 2:
-                if found == 1:
-                    if panel_M == 1:
-                        if left_gap == 0:
+                if found:
+                    if panel_M:
+                        if not left_gap:
                             return (PickupType.Correct_panel, None)
                         else:
                             return (PickupType.Wrong_Panel, None)
@@ -223,9 +244,9 @@ class CognexCamera:
                 else:
                     return (PickupType.No_detect, None)
             elif type == 3:
-                if found == 1:
-                    if panel_M == 1:
-                        if left_gap == 1:
+                if found:
+                    if panel_M:
+                        if left_gap:
                             return (PickupType.Correct_panel, None)
                         else:
                             return (PickupType.Wrong_Panel, None)
@@ -301,6 +322,8 @@ class CognexCamera:
                         break
         except asyncio.TimeoutError:
             pass
+        except Exception as e:
+            logger.error(f"_read_lines failed: {e}")
         return buf
 
     async def set_job_by_id(self, job_id: int) -> bool:

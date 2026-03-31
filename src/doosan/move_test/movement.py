@@ -43,6 +43,8 @@ _cell_type_1_offset: float | None = None
 _cell_type_2_offset: float | None = None
 _cell_type_3_offset: float | None = None
 
+_pickup_up: np.ndarray | None = None
+
 async def wait_for_motion_complete(
     result_queue: mp.Queue,
     timeout: float = MOVE_TIMEOUT,
@@ -358,9 +360,68 @@ async def run_sequence(
                     _cell_type_3_offset = _current_force_pose[2] + CELL_TYPE_3_OFFSET
                     logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
 
+        elif step["type"] == "paper":
+            scan_name = step["scan_name"]
+            pickup_name = step["pickup_name"]
+            bin_name = step["bin_name"]
+            cell_type = step["cell_type"]
+
+            if scan_name not in poses:
+                logger.error(f"Pose `{scan_name}` not found in loaded poses")
+                raise SystemExit(1)
+
+            if pickup_name not in poses:
+                logger.error(f"Pose `{pickup_name}` not found in loaded poses")
+                raise SystemExit(1)
+
+            if bin_name not in poses:
+                logger.error(f"Pose `{bin_name}` not found in loaded poses")
+                raise SystemExit(1)
+
+            scan_pose = poses[scan_name]
+            pickup_pose = poses[pickup_name]
+            bin_pose = poses[bin_name]
+
+            force_array = copy.deepcopy(pickup_pose["pose_array"])
+
+            force_array[2] = force_array[2] - FORCE_Z_AXIS_DOWN
+
+            force_pose = {
+                "move_type": "force",
+                "pose_array": list(force_array),
+                "name": "Pickup 1 force"
+            }
+
+
+            await execute_poses(scan_pose, command_queue, result_queue)
+
+            result, pose_array = await camera.scan_box(cell_type)
+
+            if result == PickupType.Foam or result == PickupType.Paper:
+                await execute_poses(pickup_pose, command_queue, result_queue)
+
+                await execute_poses(force_pose, command_queue, result_queue)
+
+                await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=True)
+
+                await asyncio.sleep(0.8)
+
+                await execute_poses(pickup_pose, command_queue, result_queue)
+
+                await execute_poses(scan_pose, command_queue, result_queue)
+
+                # TODO: safe new scan hight
+
+                await execute_poses(bin_pose, command_queue, result_queue)
+
+                await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=False)
+
+                await execute_poses(scan_pose, command_queue, result_queue)
+            else:
+                logger.info(f"No foam or paper detected, got {result.name}")
+
         else:
             logger.warning(f"Unknown step type '{step_type}', skipping")
-
 
 def _prompt(message: str) -> str:
     """Blocking stdin prompt, safe to run in an executor."""
