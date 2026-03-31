@@ -217,7 +217,7 @@
     ],
     "paper type 1": [
       {"type": "pose", "name": "Camera scan type 1 [J]"},
-      {"type": "paper", "scan_name": "Camera scan type 1 [L]", "pickup_name": "pickup type 1", "bin_name": "bin [J]", "cell_type": 1},
+      {"type": "paper", "scan_name": "Camera scan type 1 [J]", "pickup_name": "pickup type 1", "bin_name": "bin [J]", "cell_type": 1},
       {"type": "wait_for_user_input", "message": "Press Enter to continue..."}
     ]
   }

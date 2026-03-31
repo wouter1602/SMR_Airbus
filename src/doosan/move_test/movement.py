@@ -173,6 +173,18 @@ def calculate_transformation(original: np.ndarray, offset: np.ndarray) -> np.nda
     rx, ry, rz = flip_to_180_repr(rx, ry, rz)
     return np.array([rx, ry, rz], dtype=np.float32)
 
+def update_offsets(pose: np.ndarray, type: int):
+    global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset
+    if type == 1:
+        _cell_type_1_offset = pose[2] + CELL_TYPE_1_OFFSET
+        logger.debug(f"Current offset for cell type 1: {_cell_type_1_offset}")
+    elif type == 2:
+        _cell_type_2_offset = pose[2] + CELL_TYPE_2_OFFSET
+        logger.debug(f"Current offset for cell type 2: {_cell_type_2_offset}")
+    elif type == 3:
+        _cell_type_3_offset = pose[2] + CELL_TYPE_3_OFFSET
+        logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
+
 async def run_sequence(
     steps: list,
     poses: dict,
@@ -204,7 +216,7 @@ async def run_sequence(
             logger.info(f"Running sub-sequence: '{name}'")
             await run_sequence(sequences[name], poses, sequences, command_queue, result_queue, camera, visited | {name})
 
-        if step_type == "pose":
+        elif step_type == "pose":
             name = step["name"]
             if name not in poses:
                 logger.error(f"Pose '{name}' not found in loaded poses")
@@ -266,9 +278,6 @@ async def run_sequence(
             logger.debug(f"Rot correction: {rot_correction}")
             pose_array[-3:] = rot_correction
             pose_array[2] = -84.75 # Set fixed Z offset TODO: Make global variable
-            # TODO: make offset based on pickup type
-            # pose_array[3] = 108.68 # Set same as pickup type 1
-            # pose_array[4] = -179.12 # Set same as pickup type 1
 
 
             camera_pose = {
@@ -280,7 +289,6 @@ async def run_sequence(
             await execute_poses(camera_pose, command_queue, result_queue)
 
             # move to actual pickup
-
 
             pose_array[2] = pose_array[2] - FORCE_Z_AXIS_DOWN
 
@@ -295,16 +303,7 @@ async def run_sequence(
             await execute_poses(camera_pose, command_queue, result_queue)
 
             if _current_force_pose is not None:
-                if step["cell_type"] == 1:
-                    _cell_type_1_offset = _current_force_pose[2] + CELL_TYPE_1_OFFSET
-                    logger.debug(f"Current offset for cell type 1: {_cell_type_1_offset}")
-                elif step["cell_type"] == 2:
-                    _cell_type_2_offset = _current_force_pose[2] + CELL_TYPE_2_OFFSET
-                    logger.debug(f"Current offset for cell type 2: {_cell_type_2_offset}")
-                elif step["cell_type"] == 3:
-                    _cell_type_3_offset = _current_force_pose[2] + CELL_TYPE_3_OFFSET
-                    logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
-
+                update_offsets(_current_force_pose, step["cell_type"])
 
         elif step_type == "wait":
             seconds = step.get("seconds", 0)
@@ -350,15 +349,7 @@ async def run_sequence(
             logger.info(f"pose is: {_current_force_pose}")
 
             if _current_force_pose is not None:
-                if step["cell_type"] == 1:
-                    _cell_type_1_offset = _current_force_pose[2] + CELL_TYPE_1_OFFSET
-                    logger.debug(f"Current offset for cell type 1: {_cell_type_1_offset}")
-                elif step["cell_type"] == 2:
-                    _cell_type_2_offset = _current_force_pose[2] + CELL_TYPE_2_OFFSET
-                    logger.debug(f"Current offset for cell type 2: {_cell_type_2_offset}")
-                elif step["cell_type"] == 3:
-                    _cell_type_3_offset = _current_force_pose[2] + CELL_TYPE_3_OFFSET
-                    logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
+                update_offsets(_current_force_pose, step["cell_type"])
 
         elif step["type"] == "paper":
             scan_name = step["scan_name"]
@@ -384,41 +375,61 @@ async def run_sequence(
 
             force_array = copy.deepcopy(pickup_pose["pose_array"])
 
+            place_array = copy.deepcopy(pickup_pose["pose_array"])
+
             force_array[2] = force_array[2] - FORCE_Z_AXIS_DOWN
+
+            place_array[2] = place_array[2] + FORCE_Z_AXIS_DOWN
 
             force_pose = {
                 "move_type": "force",
                 "pose_array": list(force_array),
-                "name": "Pickup 1 force"
+                "name": "force pickup down"
+            }
+
+            place_pose = {
+                "move_type": "linear",
+                "pose_array": list(place_array),
+                "name": "Pickup above"
             }
 
 
             await execute_poses(scan_pose, command_queue, result_queue)
 
-            result, pose_array = await camera.scan_box(cell_type)
+            loop_counter: int = 0
+            while True:
+                result, pose_array = await camera.scan_box(cell_type)
 
-            if result == PickupType.Foam or result == PickupType.Paper:
-                await execute_poses(pickup_pose, command_queue, result_queue)
+                if result == PickupType.Foam or result == PickupType.Paper:
+                    await execute_poses(pickup_pose, command_queue, result_queue)
 
-                await execute_poses(force_pose, command_queue, result_queue)
+                    await execute_poses(force_pose, command_queue, result_queue)
 
-                await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=True)
+                    await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=True)
 
-                await asyncio.sleep(0.8)
+                    await asyncio.sleep(0.8)
 
-                await execute_poses(pickup_pose, command_queue, result_queue)
+                    await execute_poses(pickup_pose, command_queue, result_queue)
 
-                await execute_poses(scan_pose, command_queue, result_queue)
+                    await execute_poses(place_pose, command_queue, result_queue)
 
-                # TODO: safe new scan hight
+                    # TODO: safe new scan hight
+                    if _current_force_pose is not None:
+                        update_offsets(_current_force_pose, step["cell_type"])
 
-                await execute_poses(bin_pose, command_queue, result_queue)
+                    await execute_poses(bin_pose, command_queue, result_queue)
 
-                await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=False)
+                    await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=False)
 
-                await execute_poses(scan_pose, command_queue, result_queue)
-            else:
-                logger.info(f"No foam or paper detected, got {result.name}")
+                    await execute_poses(scan_pose, command_queue, result_queue)
+                else:
+                    logger.info(f"No foam or paper detected, got {result.name}")
+                    break
+
+                if loop_counter == 5:
+                    logger.warning(f"Paper loop has run {loop_counter} times.")
+
+                loop_counter += 1
 
         else:
             logger.warning(f"Unknown step type '{step_type}', skipping")
