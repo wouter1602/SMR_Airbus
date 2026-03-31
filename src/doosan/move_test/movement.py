@@ -10,9 +10,11 @@ from pathlib import Path
 import json
 import copy
 
+from scipy.spatial.transform import Rotation as R
+
 import doosan_drfl as drfl
 from robot_worker import robot_worker, MOVE_TIMEOUT, POLL_INTERVAL
-from cognix import CognexCamera
+from cognix import CognexCamera, PickupType
 
 # Setup varables
 IP_DOOSAN = "192.168.0.50"
@@ -24,6 +26,8 @@ FORCE_Z_AXIS_DOWN = 100.0 # in mm
 CELL_TYPE_1_OFFSET = 710.00 #697.71 # in mm
 CELL_TYPE_2_OFFSET = 697.71 # in mm
 CELL_TYPE_3_OFFSET = 697.71 # in mm
+
+TYPE_1_OFFSET = np.array([107.68, -178.97, 108.10], dtype=np.float32)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -57,7 +61,7 @@ async def wait_for_motion_complete(
 
     if len(result) == 2:
         logger.debug(f"Stopped based on: {result[0]}. With result: {result[1]}") # Set result to variable to be used
-        _current_force_pose = result[1]
+        _current_force_pose = result[1].copy()
     else:
         if result != "done":
             raise RuntimeError(result)
@@ -141,19 +145,62 @@ async def load_config(filepath: str | Path) -> tuple[dict, str | None, dict]:
     return poses, home, sequences
 
 
+def calculate_transformation(original: np.ndarray, offset: np.ndarray) -> np.ndarray:
+
+    def flip_to_180_repr(rx, ry, rz):
+        """Convert XYZ Euler to the equivalent representation where Ry is near ±180."""
+        rx_f = rx + 180 if rx < 0 else rx - 180
+        ry_f = 180 - ry
+        if ry_f > 180: ry_f -= 360   # normalize to [-180, 180]
+        rz_f = rz + 180 if rz < 0 else rz - 180
+        return rx_f, ry_f, rz_f
+
+    logger.debug(f"Got original array: `{original}` and offset: `{offset}`")
+
+    ideal_flat = R.from_euler('XYZ', [90, 180, 90], degrees=True)
+
+    actual_flat = R.from_euler('XYZ', offset, degrees=True)
+
+    rot_correction = actual_flat * ideal_flat.inv()
+
+    target_ideal = R.from_euler('XYZ', original, degrees=True)
+
+    target_actual = rot_correction * target_ideal
+
+    rx, ry, rz = target_actual.as_euler('XYZ', degrees=True)
+    rx, ry, rz = flip_to_180_repr(rx, ry, rz)
+    return np.array([rx, ry, rz], dtype=np.float32)
+
 async def run_sequence(
     steps: list,
     poses: dict,
+    sequences: dict,
     command_queue: mp.Queue,
     result_queue: mp.Queue,
     camera: CognexCamera,
+    visited: set | None = None
 ) -> None:
     """Execute a named sequence of pose moves, air toggles, and camera-detected moves."""
     global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset
+
+    if visited is None:
+        visited = set()
+
     loop = asyncio.get_running_loop()
 
     for step in steps:
         step_type = step.get("type")
+
+        if step_type == "sequence":
+            name = step["name"]
+            if name not in sequences:
+                logger.error(f"Sequence '{name}' not found")
+                raise SystemExit(1)
+            if name in visited:
+                logger.error(f"Circular reference detected in sequence '{name}' is already in teh call chain {visited}")
+                raise SystemExit(1)
+            logger.info(f"Running sub-sequence: '{name}'")
+            await run_sequence(sequences[name], poses, sequences, command_queue, result_queue, camera, visited | {name})
 
         if step_type == "pose":
             name = step["name"]
@@ -194,25 +241,11 @@ async def run_sequence(
             pose_array = None
             while pose_array is None:
                 logger.info("Triggering camera...")
-                if step["cell_type"] == 1:
-                    cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
-                elif step["cell_type"] == 2:
-                    cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
-                elif step["cell_type"] == 3:
-                    cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
-                else:
-                    raise ValueError(f"Unknown scan type: {step['name']}")
 
-                results = await camera.trigger_and_read(cells)
+                results = await camera.scan_scan(step["cell_type"])
 
-                def to_float(v):
-                    try:
-                        return float(v)
-                    except ValueError:
-                        return None
 
-                float_results = [to_float(results[c]) for c in cells]
-                pose_array = None if any(v is None for v in float_results) else np.array(float_results, dtype=np.float32)
+                pose_array = None if any(v is None for v in results) else np.array(results, dtype=np.float32)
 
                 if pose_array is None:
                     logger.warning("Camera returned no detection.")
@@ -225,15 +258,51 @@ async def run_sequence(
                         raise asyncio.CancelledError
                     # Any other input → retry
 
-            pose_array[2] = -98.84 #-84.75 # Set fixed Z offset TODO: Make global variable
+            logger.debug(f"Got rotation: {pose_array[-3:]}")
+            rot_correction = calculate_transformation(pose_array[-3:], TYPE_1_OFFSET)
+
+            logger.debug(f"Rot correction: {rot_correction}")
+            pose_array[-3:] = rot_correction
+            pose_array[2] = -84.75 # Set fixed Z offset TODO: Make global variable
+            # TODO: make offset based on pickup type
+            # pose_array[3] = 108.68 # Set same as pickup type 1
+            # pose_array[4] = -179.12 # Set same as pickup type 1
+
 
             camera_pose = {
                 "name": step.get("name", "camera_pose"),
                 "move_type": "linear",
-                "pose_array": list(pose_array),
+                "pose_array": list(pose_array.copy()),
             }
             logger.info(f"Camera pose: {camera_pose['pose_array']}")
             await execute_poses(camera_pose, command_queue, result_queue)
+
+            # move to actual pickup
+
+
+            pose_array[2] = pose_array[2] - FORCE_Z_AXIS_DOWN
+
+            camera_pose = {
+                "name": step.get("name", "camera_pose"),
+                "move_type": "force",
+                "pose_array": list(pose_array),
+            }
+
+            logger.debug(f"Camera pose move down: {camera_pose['pose_array']}")
+
+            await execute_poses(camera_pose, command_queue, result_queue)
+
+            if _current_force_pose is not None:
+                if step["cell_type"] == 1:
+                    _cell_type_1_offset = _current_force_pose[2] + CELL_TYPE_1_OFFSET
+                    logger.debug(f"Current offset for cell type 1: {_cell_type_1_offset}")
+                elif step["cell_type"] == 2:
+                    _cell_type_2_offset = _current_force_pose[2] + CELL_TYPE_2_OFFSET
+                    logger.debug(f"Current offset for cell type 2: {_cell_type_2_offset}")
+                elif step["cell_type"] == 3:
+                    _cell_type_3_offset = _current_force_pose[2] + CELL_TYPE_3_OFFSET
+                    logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
+
 
         elif step_type == "wait":
             seconds = step.get("seconds", 0)
@@ -251,6 +320,10 @@ async def run_sequence(
             state = "ON" if output else ("OFF" if output is False else "TOGGLE")
             logger.info(f"Air set: index={raw_index} → {state}")
 
+        elif step_type == "wait_for_user_input":
+            message = step.get("message", "Press Enter to continue...")
+            await loop.run_in_executor(None, _prompt, message)
+
         elif step_type == "calibrate":
             # move to start calibrate
             # move to end calibrate
@@ -259,7 +332,7 @@ async def run_sequence(
             if name not in poses:
                 logger.error(f"Pose `{name}` not found in loaded poses")
                 raise SystemExit(1)
-            pose = poses[name]
+            pose = copy.deepcopy(poses[name])
             await execute_poses(pose, command_queue, result_queue) # moving to start of the calibration pose
 
             coords = pose["pose_array"]
@@ -374,7 +447,7 @@ async def main() -> None:
 
         logger.info(f"Starting sequence → '{dest}'")
         try:
-            await run_sequence(sequences[dest], poses, command_queue, result_queue, camera_1)
+            await run_sequence(sequences[dest], poses, sequences, command_queue, result_queue, camera_1)
         except SystemExit:
             # execute_poses already shut down the worker on error
             raise

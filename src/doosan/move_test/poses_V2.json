@@ -193,13 +193,25 @@
       {"type": "pose", "name": "Center table"}
     ],
     "force test": [
+      {"type": "sequence", "name": "calibrate type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "wait_for_user_input", "message": "Press Enter to continue..."},
+      {"type": "air", "index": 1, "output": false}
+    ],
+    "calibrate type 1": [
+      {"type": "pose", "name": "Camera scan type 1 [J]"},
       {"type": "pose", "name": "Camera scan type 1 [L]"},
       {"type": "calibrate", "name": "pickup type 1", "cell_type": 1},
-      {"type": "pose", "name": "pickup type 1"},
-      {"type": "wait", "seconds": 2},
+      {"type": "wait_for_user_input", "message": "Press Enter to continue..."},
+      {"type": "pose", "name": "pickup type 1"}
+    ],
+    "pickup type 1": [
       {"type": "pose", "name": "Camera scan type 1 [L]"},
       {"type": "camera", "name": "Camera scan type 1 [L]", "cell_type": 1},
-      {"type": "wait", "seconds": 60}
+      {"type": "wait_for_user_input", "message": "Press Enter to pickup..."},
+      {"type": "air", "index": 1, "output": true},
+      {"type": "wait", "seconds": 0.8},
+      {"type": "pose", "name": "pickup type 1"}
     ]
   }
 }

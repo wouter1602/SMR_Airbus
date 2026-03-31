@@ -27,7 +27,7 @@ TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
 TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 
 
-MAX_FORCE = 5.5
+MAX_FORCE = 5.5 #5.5
 
 # Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
 # COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
@@ -174,7 +174,7 @@ class RobotController:
                 force: drfl.ROBOT_FORCE = self.robot.get_tool_force(
                     targetRef=drfl.COORDINATE_SYSTEM.Base
                 )
-                logger.debug(f"Current Z-force: {force._fForce[2]} N")
+                # logger.debug(f"Current Z-force: {force._fForce[2]} N")
 
                 if force._fForce[2] > MAX_FORCE:
                     self.robot.stop(
@@ -333,6 +333,7 @@ class RobotController:
                 contact_pose: drfl.ROBOT_POSE = self.robot.get_current_pose(
                     drfl.ROBOT_SPACE.Task
                     )
+                # contact_pose: drfl.ROBOT_TASK_POSE = self.robot.get_current_posx(drfl.COORDINATE_SYSTEM.Base)
                 self._disable_compliance()
                 result_queue.put(("force_done", list(contact_pose._fPosition)))
                 continue
