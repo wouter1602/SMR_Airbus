@@ -62,6 +62,7 @@ class CognexCamera:
     def trigger(self):
         resp = self._send("SW8")
         return resp.strip() == "1"
+        time.sleep(0.3)
 
     def read_cell(self, cell):
         cell = cell.strip().upper()
@@ -436,15 +437,17 @@ FILE_NAME = "wing_panels.xlsx"
  
 cam = CognexCamera("192.168.0.12", username="admin", password="")
 cam2= CognexCamera("192.168.0.10", username='admin', password="")
+
 cam.connect()
 cam2.connect()
+
 cam2.trigger()
-wingID=cam2.read_cell("C2")
-start_wing(wingID)
-print(wingID)
+
+start_wing(cam2.read_cell("C2"))
+
 panelID=cam2.read_cell("C4")
 place="2-2" # if it needs to be a different format, let me know
-add_panel("2-2",panelID)
+add_panel("2-2",cam2.read_cell("C4"))
 
 
 #output=scan_box_3()
