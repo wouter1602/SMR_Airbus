@@ -27,7 +27,7 @@ TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
 TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 
 
-MAX_FORCE = 6.0
+MAX_FORCE = 5.5
 
 # Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
 # COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
@@ -116,8 +116,6 @@ class RobotController:
         velocity = np.array([speed if speed is not None else self.lin_speed, 0], dtype=np.float32)
         acceleration = np.array([acc if acc is not None else self.lin_acceleration, 0], dtype=np.float32)
 
-        logger.info(f"amovel to pose {pose}")
-
         return self.robot.amovel(
             pos=pose,
             vel=velocity,
@@ -149,8 +147,6 @@ class RobotController:
     def _amove_force(self, pose: np.ndarray) -> bool:
 
         time.sleep(0.5)
-
-        logger.info(f"amovel force to pose {pose}")
         self.in_force_mode = True
         return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
 

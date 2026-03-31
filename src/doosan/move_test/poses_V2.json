@@ -194,7 +194,11 @@
     ],
     "force test": [
       {"type": "pose", "name": "Camera scan type 1 [L]"},
-      {"type": "calibrate", "name": "pickup type 1"},
+      {"type": "calibrate", "name": "pickup type 1", "cell_type": 1},
+      {"type": "pose", "name": "pickup type 1"},
+      {"type": "wait", "seconds": 2},
+      {"type": "pose", "name": "Camera scan type 1 [L]"},
+      {"type": "camera", "name": "Camera scan type 1 [L]", "cell_type": 1},
       {"type": "wait", "seconds": 60}
     ]
   }

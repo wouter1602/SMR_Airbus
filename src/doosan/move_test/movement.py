@@ -8,6 +8,7 @@ import numpy as np
 import sys
 from pathlib import Path
 import json
+import copy
 
 import doosan_drfl as drfl
 from robot_worker import robot_worker, MOVE_TIMEOUT, POLL_INTERVAL
@@ -20,6 +21,10 @@ IP_CAMERA_TCP = "192.168.0.12"
 
 FORCE_Z_AXIS_DOWN = 100.0 # in mm
 
+CELL_TYPE_1_OFFSET = 710.00 #697.71 # in mm
+CELL_TYPE_2_OFFSET = 697.71 # in mm
+CELL_TYPE_3_OFFSET = 697.71 # in mm
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - [%(levelname)s] - %(message)s",
@@ -30,6 +35,9 @@ logger = logging.getLogger(__name__)
 _currently_moving: bool = False
 _current_force_pose: np.ndarray | None = None
 
+_cell_type_1_offset: float | None = None
+_cell_type_2_offset: float | None = None
+_cell_type_3_offset: float | None = None
 
 async def wait_for_motion_complete(
     result_queue: mp.Queue,
@@ -59,6 +67,7 @@ async def execute_poses(
     command_queue: mp.Queue,
     result_queue: mp.Queue
 ) -> None:
+
     move_type = pose["move_type"]
     if move_type not in ("joint", "linear", "force"):
         logger.warning(f"Wrong move type: {move_type}")
@@ -140,6 +149,7 @@ async def run_sequence(
     camera: CognexCamera,
 ) -> None:
     """Execute a named sequence of pose moves, air toggles, and camera-detected moves."""
+    global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset
     loop = asyncio.get_running_loop()
 
     for step in steps:
@@ -154,14 +164,41 @@ async def run_sequence(
 
         elif step_type == "camera":
             # Trigger camera and retry loop
+
+            # First move camera to correct offset
+            if step["cell_type"] == 1:
+                offset = _cell_type_1_offset
+            elif step["cell_type"] == 2:
+                offset = _cell_type_2_offset
+            elif step["cell_type"] == 3:
+                offset = _cell_type_3_offset
+            else:
+                raise ValueError(f"Unknown cell type: {step['cell_type']}")
+
+            name = step["name"]
+            if name not in poses:
+                logger.error(f"Pose `{name}` not found in loaded poses")
+                raise SystemExit(1)
+            pose = copy.deepcopy(poses[name])
+
+            coords = pose["pose_array"]
+
+            logger.debug(f"Z offset for cell type {step['cell_type']}: {offset - coords[2]}")
+
+            coords[2] = offset # Set Z offset to camera coordinates
+
+            pose["pose_array"] = coords
+
+            await execute_poses(pose, command_queue, result_queue)
+
             pose_array = None
             while pose_array is None:
                 logger.info("Triggering camera...")
-                if step["name"] == "Scan type 1":
+                if step["cell_type"] == 1:
                     cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
-                elif step["name"] == "Scan type 2":
+                elif step["cell_type"] == 2:
                     cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
-                elif step["name"] == "Scan type 3":
+                elif step["cell_type"] == 3:
                     cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
                 else:
                     raise ValueError(f"Unknown scan type: {step['name']}")
@@ -187,6 +224,8 @@ async def run_sequence(
                         logger.info("Quit requested during camera step.")
                         raise asyncio.CancelledError
                     # Any other input → retry
+
+            pose_array[2] = -98.84 #-84.75 # Set fixed Z offset TODO: Make global variable
 
             camera_pose = {
                 "name": step.get("name", "camera_pose"),
@@ -235,6 +274,17 @@ async def run_sequence(
 
             logger.info(f"pose is: {_current_force_pose}")
 
+            if _current_force_pose is not None:
+                if step["cell_type"] == 1:
+                    _cell_type_1_offset = _current_force_pose[2] + CELL_TYPE_1_OFFSET
+                    logger.debug(f"Current offset for cell type 1: {_cell_type_1_offset}")
+                elif step["cell_type"] == 2:
+                    _cell_type_2_offset = _current_force_pose[2] + CELL_TYPE_2_OFFSET
+                    logger.debug(f"Current offset for cell type 2: {_cell_type_2_offset}")
+                elif step["cell_type"] == 3:
+                    _cell_type_3_offset = _current_force_pose[2] + CELL_TYPE_3_OFFSET
+                    logger.debug(f"Current offset for cell type 3: {_cell_type_3_offset}")
+
         else:
             logger.warning(f"Unknown step type '{step_type}', skipping")
 
@@ -270,7 +320,7 @@ async def main() -> None:
         await camera_1.connect()
     except Exception as e:
         logger.error(f"Failed to connect to camera (TCP): {e}")
-        raise SystemExit(1)
+        # raise SystemExit(1)
 
     logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}.")
 
