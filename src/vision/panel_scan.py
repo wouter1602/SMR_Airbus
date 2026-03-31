@@ -78,6 +78,7 @@ class CognexCamera:
         self.trigger()
         time.sleep(1.0)
         return {cell: self.read_cell(cell) for cell in cells}
+
     def trigger_and_read_scan(self, cells):
         self.trigger()
         time.sleep(2.0)
