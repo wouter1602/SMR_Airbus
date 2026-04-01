@@ -217,18 +217,18 @@ class CognexCamera:
                 else:
                     lenght = int(float(data['Q35']))
                     if 325<lenght<370:
-                        position_cells_scan_1 = ["U38", "U39", "U40", "U41", "U42", "U43"]
-                        data = await self.trigger_and_read_scan(position_cells_scan_1)
+                        # position_cells_scan_1 = ["U38", "U39", "U40", "U41", "U42", "U43"]
+                        # data = await self.trigger_and_read_scan(position_cells_scan_1)
 
-                        def to_float(v):
-                            try:
-                                return float(v)
-                            except ValueError:
-                                return None
+                        # def to_float(v):
+                        #     try:
+                        #         return float(v)
+                        #     except ValueError:
+                        #         return None
 
-                        values = np.array([to_float(data[c]) if data[c] is not None else np.nan for c in position_cells_scan_1], dtype=np.float32)
+                        # values = np.array([to_float(data[c]) if data[c] is not None else np.nan for c in position_cells_scan_1], dtype=np.float32)
 
-                        return (PickupType.Correct_panel, values)
+                        return (PickupType.Correct_panel, None)
                     else:
                         return (PickupType.Wrong_Panel, None)
 
