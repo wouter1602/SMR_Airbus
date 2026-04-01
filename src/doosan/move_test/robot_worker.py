@@ -27,7 +27,7 @@ TOOL_CENTER = np.array([21.670, -2.260, 51.880], dtype=np.float32) # Cz, Cy, Cz
 TOOL_INERTIA = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00], dtype=np.float32) # Ixx, Iyy, Izz, Ixy, Iyz, Izx
 
 
-MAX_FORCE = 5.5 #5.5
+MAX_FORCE_BOX = 5.5 #5.5
 
 # Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
 # COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
@@ -59,6 +59,8 @@ class RobotController:
         self.lin_acceleration = lin_acceleration
         self.force_speed = force_speed
         self.force_acceleration = force_acceleration
+
+        self._max_force = MAX_FORCE_BOX
 
         self.robot = drfl.CDRFLEx()
 
@@ -176,7 +178,7 @@ class RobotController:
                 )
                 # logger.debug(f"Current Z-force: {force._fForce[2]} N")
 
-                if force._fForce[2] > MAX_FORCE:
+                if force._fForce[2] > self._max_force:
                     self.robot.stop(
                         stop_type=drfl.STOP_TYPE.Slow
                     )
@@ -319,6 +321,9 @@ class RobotController:
                 if not self._enable_compliance():
                     result_queue.put("error:Failed to enable compliance control")
                     continue
+
+                if isinstance(output, float):
+                    self._max_force = output
 
                 if not self._amove_force(pose_array):
                     self._disable_compliance()

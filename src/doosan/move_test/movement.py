@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from decimal import MAX_EMAX
 import multiprocessing as mp
 import logging
 import asyncio
@@ -31,10 +32,14 @@ TYPE_1_OFFSET = np.array([107.68, -178.97, 108.10], dtype=np.float32)
 TYPE_2_OFFSET = np.array([12.10, -179.68, 10.52], dtype=np.float32)
 TYPE_3_OFFSET = np.array([116.27, -179.66, 115.47], dtype=np.float32)
 
-DOOSAN_SPEED = 60
-DOOSAN_ACCELERATION = 40
-DOOSAN_LIN_SPEED = 150
-DOOSAN_LIN_ACCELERATION = 75
+DOOSAN_SPEED = 60 #40 #60
+DOOSAN_ACCELERATION = 40 #20 #40
+DOOSAN_LIN_SPEED = 150 #70 #150
+DOOSAN_LIN_ACCELERATION = 75 #30 #75
+
+
+MAX_FORCE_BOX = 5.5
+MAX_FORCE_PLACE_DOWN = 15.0
 
 
 logging.basicConfig(
@@ -89,7 +94,13 @@ async def execute_poses(
 
     logger.debug(f"Executing pose: {pose['name']} [{move_type}]")
     pose_array = np.array(pose['pose_array'], dtype=np.float32)
-    command_queue.put((move_type, pose_array))
+
+    if "max_force" in pose:
+        command_queue.put((move_type, pose_array, pose["max_force"]))
+    else:
+        command_queue.put((move_type, pose_array))
+
+
 
     try:
         await wait_for_motion_complete(result_queue=result_queue, timeout=MOVE_TIMEOUT)
@@ -314,6 +325,7 @@ async def run_sequence(
                 "name": step.get("name", "camera_pose"),
                 "move_type": "force",
                 "pose_array": list(pose_array),
+                "max_force": MAX_FORCE_BOX,
             }
 
             await execute_poses(camera_pose, command_queue, result_queue)
@@ -322,14 +334,14 @@ async def run_sequence(
 
             pose_array[2] = pose_array[2] + (FORCE_Z_AXIS_DOWN * 2)
 
-            _pickup_up = pose_array.copy()
+            _pickup_up = pose_array.copy() # copy the pickup to be used by the camera pickup funciton
 
 
 
             if _current_force_pose is not None:
                 update_offsets(_current_force_pose, step["cell_type"])
 
-        elif step_type == "camera_pickup":
+        elif step_type == "camera_pickup" or step_type == "place_down_up":
             if _pickup_up is not None:
                 pickup_pose = _pickup_up.copy()
 
@@ -362,6 +374,35 @@ async def run_sequence(
         elif step_type == "wait_for_user_input":
             message = step.get("message", "Press Enter to continue...")
             await loop.run_in_executor(None, _prompt, message)
+
+        elif step_type == "place_down":
+            name = step["name"]
+
+            if name not in poses:
+                logger.error(f"Pose `{name}` not found in loaded poses")
+                raise SystemExit(1)
+
+            pose = copy.deepcopy(poses[name])
+
+            await execute_poses(pose, command_queue, result_queue) # move to above place down
+
+            coords = pose["pose_array"]
+            coords[2] = coords[2] - FORCE_Z_AXIS_DOWN # lower position.
+
+            pose_force = {
+                "name": "force down",
+                "pose_array": list(coords),
+                "move_type": "force",
+                "max_force": MAX_FORCE_PLACE_DOWN,
+            }
+
+            await execute_poses(pose_force, command_queue, result_queue) # move to place down
+
+            coords = pose["pose_array"]
+
+            coords[2] = coords[2] + (FORCE_Z_AXIS_DOWN * 2)
+
+            _pickup_up = coords.copy()
 
         elif step_type == "calibrate":
             # move to start calibrate
@@ -422,7 +463,8 @@ async def run_sequence(
             force_pose = {
                 "move_type": "force",
                 "pose_array": list(force_array),
-                "name": "force pickup down"
+                "name": "force pickup down",
+                "max_force": MAX_FORCE_BOX,
             }
 
             place_pose = {

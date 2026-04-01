@@ -25,8 +25,8 @@
   - [ X ] arduino -- **adrian**
   - [ ] led ring robot
 - [ X ] make one job and let the software turn on and off different cells.
-- [ ] Force place down -- **Wouter**
-  - [ ] New placedown locations
+- [ X ] Force place down -- **Wouter**
+  - [ / ] New placedown locations
 - [ ] Better vision
   - [ ] Box empty detection 
   - [ ] Wrong type error handling
