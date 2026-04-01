@@ -215,7 +215,10 @@ class CognexCamera:
                 if data is None:
                     return (PickupType.No_detect, None)
                 else:
-                    lenght = int(float(data['Q35']))
+                    if isinstance(data['Q35'], float):
+                        lenght = int(float(data['Q35']))
+                    else:
+                        return (PickupType.Correct_panel, None)
                     if 325<lenght<370:
                         # position_cells_scan_1 = ["U38", "U39", "U40", "U41", "U42", "U43"]
                         # data = await self.trigger_and_read_scan(position_cells_scan_1)
