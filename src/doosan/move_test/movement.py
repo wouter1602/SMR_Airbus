@@ -24,10 +24,18 @@ IP_CAMERA_TCP = "192.168.0.12"
 FORCE_Z_AXIS_DOWN = 100.0 # in mm
 
 CELL_TYPE_1_OFFSET = 710.00 #697.71 # in mm
-CELL_TYPE_2_OFFSET = 697.71 # in mm
-CELL_TYPE_3_OFFSET = 697.71 # in mm
+CELL_TYPE_2_OFFSET = 710.00 #697.71 # in mm
+CELL_TYPE_3_OFFSET = 710.00 #697.71 # in mm
 
 TYPE_1_OFFSET = np.array([107.68, -178.97, 108.10], dtype=np.float32)
+TYPE_2_OFFSET = np.array([12.10, -179.68, 10.52], dtype=np.float32)
+TYPE_3_OFFSET = np.array([116.27, -179.66, 115.47], dtype=np.float32)
+
+DOOSAN_SPEED = 40
+DOOSAN_ACCELERATION = 20
+DOOSAN_LIN_SPEED = 100
+DOOSAN_LIN_ACCELERATION = 50
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -195,7 +203,7 @@ async def run_sequence(
     visited: set | None = None
 ) -> None:
     """Execute a named sequence of pose moves, air toggles, and camera-detected moves."""
-    global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset
+    global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset, _pickup_up
 
     if visited is None:
         visited = set()
@@ -259,7 +267,7 @@ async def run_sequence(
                 results = await camera.scan_scan(step["cell_type"])
 
 
-                pose_array = None if any(v is None for v in results) else np.array(results, dtype=np.float32)
+                pose_array = None if any(v is None for v in results) or any(np.isnan(v) for v in results) else np.array(results, dtype=np.float32)
 
                 if pose_array is None:
                     logger.warning("Camera returned no detection.")
@@ -273,11 +281,21 @@ async def run_sequence(
                     # Any other input → retry
 
             logger.debug(f"Got rotation: {pose_array[-3:]}")
-            rot_correction = calculate_transformation(pose_array[-3:], TYPE_1_OFFSET)
+
+            if step["cell_type"] == 1:
+                offset = TYPE_1_OFFSET
+            elif step["cell_type"] == 2:
+                offset = TYPE_2_OFFSET
+            elif step["cell_type"] == 3:
+                offset = TYPE_3_OFFSET
+            else:
+                raise ValueError(f"Unknown cell type: {step['cell_type']}")
+
+            rot_correction = calculate_transformation(pose_array[-3:], offset)
 
             logger.debug(f"Rot correction: {rot_correction}")
             pose_array[-3:] = rot_correction
-            pose_array[2] = -84.75 # Set fixed Z offset TODO: Make global variable
+            pose_array[2] = -70.75 # Set fixed Z offset TODO: Make global variable
 
 
             camera_pose = {
@@ -298,12 +316,32 @@ async def run_sequence(
                 "pose_array": list(pose_array),
             }
 
+            await execute_poses(camera_pose, command_queue, result_queue)
+
             logger.debug(f"Camera pose move down: {camera_pose['pose_array']}")
 
-            await execute_poses(camera_pose, command_queue, result_queue)
+            pose_array[2] = pose_array[2] + (FORCE_Z_AXIS_DOWN * 2)
+
+            _pickup_up = pose_array.copy()
+
+
 
             if _current_force_pose is not None:
                 update_offsets(_current_force_pose, step["cell_type"])
+
+        elif step_type == "camera_pickup":
+            if _pickup_up is not None:
+                pickup_pose = _pickup_up.copy()
+
+                pickup = {
+                    "name": "pickup above",
+                    "move_type": "linear",
+                    "pose_array": list(pickup_pose),
+                }
+
+                await execute_poses(pickup, command_queue, result_queue)
+
+
 
         elif step_type == "wait":
             seconds = step.get("seconds", 0)
@@ -328,7 +366,7 @@ async def run_sequence(
         elif step_type == "calibrate":
             # move to start calibrate
             # move to end calibrate
-            #
+
             name = step["name"]
             if name not in poses:
                 logger.error(f"Pose `{name}` not found in loaded poses")
@@ -397,10 +435,12 @@ async def run_sequence(
             await execute_poses(scan_pose, command_queue, result_queue)
 
             loop_counter: int = 0
+            retry_counter: int = 0
             while True:
                 result, pose_array = await camera.scan_box(cell_type)
 
                 if result == PickupType.Foam or result == PickupType.Paper:
+                    retry_counter = 0
                     await execute_poses(pickup_pose, command_queue, result_queue)
 
                     await execute_poses(force_pose, command_queue, result_queue)
@@ -422,6 +462,15 @@ async def run_sequence(
                     await toggle_air(command_queue, result_queue, index=drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1, output=False)
 
                     await execute_poses(scan_pose, command_queue, result_queue)
+                elif result == PickupType.No_detect:
+                    logger.info(f"No detect, got {result.name}, retrying...")
+
+                    if retry_counter == 5:
+                        logger.warning(f"Retry counter has reached {retry_counter}, giving up.")
+                        break
+                    else:
+                        retry_counter += 1
+                    continue
                 else:
                     logger.info(f"No foam or paper detected, got {result.name}")
                     break
@@ -471,7 +520,7 @@ async def main() -> None:
 
     worker = mp.Process(
         target=robot_worker,
-        args=(command_queue, result_queue, IP_DOOSAN, PORT_DOOSAN),
+        args=(command_queue, result_queue, IP_DOOSAN, PORT_DOOSAN, DOOSAN_SPEED, DOOSAN_ACCELERATION, DOOSAN_LIN_SPEED, DOOSAN_LIN_ACCELERATION),
         daemon=True,
     )
     worker.start()

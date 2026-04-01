@@ -362,7 +362,13 @@ def robot_worker(
     result_queue: mp.Queue,
     ip_address: str,
     port: int,
+    speed: float = 20,
+    acceleration: float = 10,
+    lin_speed: float = 60,
+    lin_acceleration: float = 35,
 ) -> None:
     """Entry point for mp.Process — instantiates and runs the RobotController."""
-    controller = RobotController(ip_address, port)
+    controller = RobotController(ip_address, port,
+        speed=speed, acceleration=acceleration,
+        lin_speed=lin_speed, lin_acceleration=lin_acceleration)
     controller.run(command_queue, result_queue)
