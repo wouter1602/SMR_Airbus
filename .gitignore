@@ -209,3 +209,4 @@ src/doosan/move_test/stubs/doosan_drfl.pyi
 src/doosan/move_test/doosan_drfl.pyi
 
 *.xlsx
+*.xlsx#

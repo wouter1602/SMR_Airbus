@@ -111,7 +111,7 @@ class CognexCamera:
             except Exception:
                 continue
         raise ConnectionError(f"Could not fetch image from {self.ip}")
-    
+
     def change_job_box(self):
         self._send("SIA0261")
     def change_job_scan(self):
@@ -167,28 +167,28 @@ class CognexCamera:
             raise ValueError("job_id must be an integer")
         if job_id < 0 or job_id > 999:
             raise ValueError("job_id must be between 0 and 999")
-    
+
         self.set_offline()
         time.sleep(0.5)
-    
+
         # stuur command zonder _send (die kapt te vroeg)
         self._sock.sendall((f"SJ{job_id}\r\n").encode())
-    
+
         # wacht expliciet op response
         response = self._read_lines(1, timeout=3).decode(errors="replace").strip()
         print(f"SJ response raw: '{response}'")
-    
+
         if not response:
             raise RuntimeError("No response from camera (timeout)")
-    
+
         try:
             status = int(response)
         except ValueError:
             raise RuntimeError(f"Unexpected response from camera: {response}")
-    
+
         if status != 1:
             raise RuntimeError(f"SJ failed with status {status}")
-    
+
         return True
 class PickupType(IntEnum):
     Empty = 0
@@ -209,7 +209,7 @@ def scan_box_3():
     cam.change_job_box()
     position_cells = ["A42", "B42", "C42", "D42", "E42", "F42", "G42"]  # cel1 t/m cel5
     data_scan_box = cam.trigger_and_read_box(position_cells)
-    
+
     # convert result
     paper = convert(data_scan_box['A42'])
     panel_M = convert(data_scan_box['B42'])
@@ -218,14 +218,14 @@ def scan_box_3():
     empty = convert(data_scan_box['E42'])
     foam = convert(data_scan_box['F42'])
     left_gap = convert(data_scan_box['G42'])
-    
+
     #decide output
     if empty == 1:
         print("panel 3 is empty, please refill")
         # stop robot
         # change light
         return PickupType.Empty
-     
+
     elif paper==1:
         return PickupType.Paper
         #do (3_bin)
@@ -257,7 +257,7 @@ def scan_box_2():
     cam.change_job_box()
     position_cells = ["A42", "B42", "C42", "D42", "E42", "F42", "G42"]  # cel1 t/m cel5
     data_scan_box = cam.trigger_and_read_box(position_cells)
-    
+
     # convert result
     paper = convert(data_scan_box['A42'])
     panel_M = convert(data_scan_box['B42'])
@@ -272,9 +272,9 @@ def scan_box_2():
         # stop robot
         # change light
         return PickupType.Empty
-     
+
     elif paper==1:
-        
+
         return PickupType.Paper
         #do (3_bin)
     elif foam ==1:
@@ -283,7 +283,7 @@ def scan_box_2():
     elif panel == 1:
         if found == 1:
             if panel_M == 1:
-                if left_gap == 0: 
+                if left_gap == 0:
                     return PickupType.right_panel
                 else:
                     return PickupType.wrong_panel
@@ -304,19 +304,19 @@ def scan_box_1():
     cam.change_job_box()
     position_cells = ["A42", "D42", "E42", "F42",]  # cel1 t/m cel5
     data_scan_box = cam.trigger_and_read_box(position_cells)
-    
+
     # convert result
     paper = convert(data_scan_box['A42'])
     panel = convert(data_scan_box['D42'])
     empty = convert(data_scan_box['E42'])
     foam = convert(data_scan_box['F42'])
-    
+
     if empty == 1:
         print("panel 1 is empty, please refill")
         # stop robot
         # change light
         return PickupType.Empty
-     
+
     elif paper==1:
         return PickupType.Paper
         #do (3_bin)
@@ -336,17 +336,17 @@ def scan_box_1():
             return PickupType.right_panel, values
         else:
             return PickupType.wrong_panel
-        
+
     else:
         return PickupType.No_detect
-    
+
 def scan_3():
     cam.change_job_scan()
     position_cells = ["S38", "S39", "S40", "S41", "S42", "S43", "S44"]
     data = cam.trigger_and_read_scan(position_cells)
     values = np.array([float(data[c]) if data[c] is not None else np.nan for c in position_cells],dtype=np.float32)
     return values
-    
+
 def scan_2():
     cam.change_job_scan()
     position_cells = ["T38", "T39", "T40", "T41", "T42", "T43", "T44"]
@@ -354,6 +354,8 @@ def scan_2():
     values = np.array([float(data[c]) if data[c] is not None else np.nan for c in position_cells],dtype=np.float32)
     return values
 #def scan_1():
+
+
 def log_wing(wing_id):
     # Check if file exists
     if os.path.exists(FILE_NAME):
@@ -433,10 +435,10 @@ def add_panel(position, barcode):
 
     wb.save(FILE_NAME)
 #------
-FILE_NAME = "wing_panels.xlsx"    
+FILE_NAME = "wing_panels.xlsx"
 
 
- 
+
 cam = CognexCamera("192.168.0.12", username="admin", password="")
 cam2= CognexCamera("192.168.0.10", username='admin', password="")
 
@@ -459,4 +461,3 @@ add_panel("1-1", 123)
 #print(pickup)
 cam.disconnect()
 cam2.disconnect()
-

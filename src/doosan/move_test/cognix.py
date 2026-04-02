@@ -2,12 +2,11 @@
 
 import asyncio
 import numpy as np
-import time
 import urllib.request
 import io
 import logging
 
-from typing import Tuple, Any
+from typing import Any
 from enum import IntEnum
 
 try:
@@ -100,28 +99,16 @@ class CognexCamera:
             return None
         return lines[1].strip() if len(lines) >= 2 else None
 
-    async def trigger_and_read_box(self, cells: list[str]) -> (dict[str, str | None]| None):
+    async def _trigger_and_read(self, cells: list[str], wait: float) -> dict[str, str | None] | None:
         await self.trigger()
-        await asyncio.sleep(TRIGGER_WAIT_BOX)
+        await asyncio.sleep(wait)
+
         try:
             result = {cell: await self.read_cell(cell) for cell in cells}
         except Exception as e:
-            logger.error(f"trigger_and_read_box failed: {e}")
+            logger.error(f"trigger_and_read failed: {e}")
             return None
-        for cell, val in result.items():
-            if val is None:
-                logger.warning(f"read_cell({cell}) returned None")
-        return result
 
-    async def trigger_and_read_scan(self, cells: list[str]) -> dict[str, str | None]:
-        """
-        Trigger the camera and read one or more cells.
-        cells: list of cell names, e.g. ["B0", "C0", "D0"]
-        Returns a dict: {"B0": "17.000", "C0": "91829.000", ...}
-        """
-        await self.trigger()
-        await asyncio.sleep(TRIGGER_WAIT_CELL)
-        result = {cell: await self.read_cell(cell) for cell in cells}
         for cell, val in result.items():
             if val is None:
                 logger.warning(f"read_cell({cell}) returned None")
@@ -165,127 +152,6 @@ class CognexCamera:
         img = await self.get_image()
         if img is not None:
             img.show()
-
-    async def change_job_box(self) -> None:
-        await self._send("SIA0261")
-        await asyncio.sleep(0.8)
-
-    async def change_job_scan(self) -> None:
-        await self._send("SIA0260")
-        await asyncio.sleep(0.8)
-
-    async def scan_box(self, type: int) -> PickupType:
-
-        def _convert(value: str | None) -> bool:
-
-            if value == '#ERR':
-                return False
-            elif value is None:
-                return False
-            try:
-                return True if float(value) == 1.0 else False
-            except (ValueError, TypeError):
-                return False
-            except Exception as e:
-                logger.error(f"_convert failed: {e}")
-                return False
-
-        position_cells = ["A42", "B42", "C42", "D42", "E42", "F42", "G42"]
-
-        # read right cells
-        await self.change_job_box()
-
-        scan_box_result = await self.trigger_and_read_box(position_cells)
-
-        if scan_box_result is None:
-            return PickupType.No_detect
-
-        # convert result
-        paper = _convert(scan_box_result['A42'])
-        panel_M = _convert(scan_box_result['B42'])
-        found = _convert(scan_box_result['C42'])
-        panel = _convert(scan_box_result['D42'])
-        empty = _convert(scan_box_result['E42'])
-        foam = _convert(scan_box_result['F42'])
-        left_gap = _convert(scan_box_result['G42'])
-
-        # decide output #TODO: rewrite this if statement nesting
-        if empty:
-            return PickupType.Empty
-        elif paper:
-            return PickupType.Paper
-        elif foam:
-            return PickupType.Foam
-        elif panel:
-            if type == 1:
-                await self.change_job_scan()
-                position_cells_scan = ["Q35"]
-                data = await self.trigger_and_read_scan(position_cells_scan)
-                if data is None:
-                    return PickupType.No_detect
-                else:
-                    if isinstance(data['Q35'], float):
-                        lenght = int(float(data['Q35']))
-                    else:
-                        return PickupType.Correct_panel
-                    if 325<lenght<370:
-
-                        return PickupType.Correct_panel
-                    else:
-                        return PickupType.Wrong_Panel
-
-            elif type == 2:
-                if found:
-                    if panel_M:
-                        if not left_gap:
-                            return PickupType.Correct_panel
-                        else:
-                            return PickupType.Wrong_Panel
-                    else:
-                        return PickupType.Wrong_Panel
-                else:
-                    return PickupType.No_detect
-            elif type == 3:
-                if found:
-                    if panel_M:
-                        if left_gap:
-                            return PickupType.Correct_panel
-                        else:
-                            return PickupType.Wrong_Panel
-                    else:
-                        return PickupType.Wrong_Panel
-                else:
-                    return PickupType.No_detect
-        else:
-            return PickupType.No_detect
-
-        return PickupType.No_detect
-
-    async def scan_scan(self, type: int) -> np.ndarray:
-        await self.change_job_scan()
-
-        if type == 1:
-            position_cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
-        elif type == 2:
-            position_cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
-        elif type == 3:
-            position_cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
-        else:
-            raise ValueError(f"Invalid scan type: {type}")
-
-        data = await self.trigger_and_read_scan(position_cells)
-
-        def to_float(v: str | None) -> float | None:
-            if v is None:
-                return None
-            try:
-                return float(v)
-            except ValueError:
-                return None
-
-        values = np.array([to_float(data[c]) if data[c] is not None else np.nan for c in position_cells], dtype=np.float32)
-
-        return values
 
     # ── internals ────────────────────────────────────────────────────-
 
@@ -342,29 +208,159 @@ class CognexCamera:
             logger.error(f"_read_lines failed: {e}")
         return buf
 
-    async def set_job_by_id(self, job_id: int) -> bool:
-        if job_id < 0 or job_id > 999:
-            raise ValueError(f"job_id must be between 0 and 999, got {job_id}")
+class CameraTCP(CognexCamera):
+    async def change_job_box(self) -> None:
+        await self._send("SIA0261")
+        await asyncio.sleep(0.8)
 
-        await self.set_offline()
-        await asyncio.sleep(0.5)
+    async def change_job_scan(self) -> None:
+        await self._send("SIA0260")
+        await asyncio.sleep(0.8)
 
-        # Send command without _send (stops too soon?)
-        response = (await self._read_lines(1, timeout=3)).decode(errors="replace").strip()
+    async def scan_box(self, type: int) -> PickupType:
 
-        if not response:
-            raise RuntimeError("No respone from camera within timeout")
+        def _convert(value: str | None) -> bool:
 
-        try:
-            status = int(response)
-        except ValueError:
-            raise RuntimeError(f"Unexpected response from camera: '{response}'")
+            if value == '#ERR':
+                return False
+            elif value is None:
+                return False
+            try:
+                return True if float(value) == 1.0 else False
+            except (ValueError, TypeError):
+                return False
+            except Exception as e:
+                logger.error(f"_convert failed: {e}")
+                return False
 
-        if status != 1:
-            raise RuntimeError(f"SJ failed with status: `{status}`")
+        position_cells = ["A42", "B42", "C42", "D42", "E42", "F42", "G42"]
 
-        return True
+        # read right cells
+        await self.change_job_box()
 
+        scan_box_result = await self._trigger_and_read(position_cells, TRIGGER_WAIT_BOX)
+
+        if scan_box_result is None:
+            return PickupType.No_detect
+
+        # convert result
+        paper = _convert(scan_box_result['A42'])
+        panel_M = _convert(scan_box_result['B42'])
+        found = _convert(scan_box_result['C42'])
+        panel = _convert(scan_box_result['D42'])
+        empty = _convert(scan_box_result['E42'])
+        foam = _convert(scan_box_result['F42'])
+        left_gap = _convert(scan_box_result['G42'])
+
+        # decide output #TODO: rewrite this if statement nesting
+        if empty:
+            return PickupType.Empty
+        elif paper:
+            return PickupType.Paper
+        elif foam:
+            return PickupType.Foam
+        elif panel:
+            if type == 1:
+                await self.change_job_scan()
+                position_cells_scan = ["Q35"]
+                data = await self._trigger_and_read(position_cells_scan, TRIGGER_WAIT_CELL)
+                if data is None:
+                    return PickupType.No_detect
+                else:
+                    if isinstance(data['Q35'], float):
+                        lenght = int(float(data['Q35']))
+                    else:
+                        return PickupType.Correct_panel
+                    if 325<lenght<370:
+
+                        return PickupType.Correct_panel
+                    else:
+                        return PickupType.Wrong_Panel
+
+            elif type == 2:
+                if found:
+                    if panel_M:
+                        if not left_gap:
+                            return PickupType.Correct_panel
+                        else:
+                            return PickupType.Wrong_Panel
+                    else:
+                        return PickupType.Wrong_Panel
+                else:
+                    return PickupType.No_detect
+            elif type == 3:
+                if found:
+                    if panel_M:
+                        if left_gap:
+                            return PickupType.Correct_panel
+                        else:
+                            return PickupType.Wrong_Panel
+                    else:
+                        return PickupType.Wrong_Panel
+                else:
+                    return PickupType.No_detect
+        else:
+            return PickupType.No_detect
+
+        return PickupType.No_detect
+
+    async def scan_scan(self, type: int) -> np.ndarray:
+        await self.change_job_scan()
+
+        if type == 1:
+            position_cells = ["U38", "U39", "U40", "U41", "U42", "U43"]
+        elif type == 2:
+            position_cells = ["T38", "T39", "T40", "T41", "T42", "T43"]
+        elif type == 3:
+            position_cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
+        else:
+            raise ValueError(f"Invalid scan type: {type}")
+
+        data = await self._trigger_and_read(position_cells, TRIGGER_WAIT_CELL)
+
+        if data is None:
+            return np.array([np.nan] * len(position_cells), dtype=np.float32)
+
+        def to_float(v: str | None) -> float | None:
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except ValueError:
+                return None
+
+        values = np.array([to_float(data[c]) if data[c] is not None else np.nan for c in position_cells], dtype=np.float32)
+
+        return values
+
+class CameraCode(CognexCamera):
+    async def scan_qr(self) -> str | None:
+        data = await self._trigger_and_read(["C2"], TRIGGER_WAIT_CELL)
+
+        if data is None:
+            return None
+
+        if data["C2"] is None:
+            return None
+
+        if data["C2"] == '#ERR':
+            return None
+
+        return data["C2"]
+
+    async def scan_barcode(self) -> str | None:
+        data = await self._trigger_and_read(["C4"], TRIGGER_WAIT_CELL)
+
+        if data is None:
+            return None
+
+        if data["C4"] is None:
+            return None
+
+        if data["C4"] == '#ERR':
+            return None
+
+        return data["C4"]
 
 # ── main ──────────────────────────────────────────────────────────────
 
@@ -377,9 +373,6 @@ async def main():
     print("Trigger:", success)
 
     cells = ["S38", "S39", "S40", "S41", "S42", "S43"]
-    scan_box_result = await cam.trigger_and_read_box(cells)
-
-
 
     def to_float(v):
         try:

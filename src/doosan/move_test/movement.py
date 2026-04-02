@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-
-from decimal import MAX_EMAX
 import multiprocessing as mp
 import logging
 import asyncio
@@ -10,26 +8,27 @@ import sys
 from pathlib import Path
 import json
 import copy
-
 from scipy.spatial.transform import Rotation as R
 
 import doosan_drfl as drfl
 from robot_worker import robot_worker, MOVE_TIMEOUT, POLL_INTERVAL
-from cognix import CognexCamera, PickupType
+from cognix import CameraTCP, CameraCode, PickupType
+from database import WingPanelDB
 
 # Setup varables
 IP_DOOSAN = "192.168.0.50"
 PORT_DOOSAN = 12345
 IP_CAMERA_TCP = "192.168.0.12"
+IP_CAMERA_CODE = "192.168.0.10"
 
 FORCE_Z_AXIS_DOWN = 100.0 # in mm
 
 CELL_TYPE_1_OFFSET = 710.00 #697.71 # in mm
-CELL_TYPE_2_OFFSET = 710.00 #697.71 # in mm
+CELL_TYPE_2_OFFSET = 706.00 #697.71 # in mm
 CELL_TYPE_3_OFFSET = 710.00 #697.71 # in mm
 
-TYPE_1_OFFSET = np.array([107.68, -178.97, 108.10], dtype=np.float32)
-TYPE_2_OFFSET = np.array([12.10, -179.68, 10.52], dtype=np.float32)
+TYPE_1_OFFSET = np.array([132.49, -179.01, 132.20], dtype=np.float32)#np.array([107.68, -178.97, 108.10], dtype=np.float32)
+TYPE_2_OFFSET = np.array([25.47, -179.86, 24.31], dtype=np.float32) #np.array([12.10, -179.68, 10.52], dtype=np.float32)
 TYPE_3_OFFSET = np.array([116.27, -179.66, 115.47], dtype=np.float32)
 
 DOOSAN_SPEED = 60 #40 #60
@@ -99,7 +98,6 @@ async def execute_poses(
         command_queue.put((move_type, pose_array, pose["max_force"]))
     else:
         command_queue.put((move_type, pose_array))
-
 
 
     try:
@@ -210,7 +208,9 @@ async def run_sequence(
     sequences: dict,
     command_queue: mp.Queue,
     result_queue: mp.Queue,
-    camera: CognexCamera,
+    camera: CameraTCP,
+    barcode_camera: CameraCode,
+    database: WingPanelDB,
     visited: set | None = None
 ) -> None:
     """Execute a named sequence of pose moves, air toggles, and camera-detected moves."""
@@ -233,7 +233,7 @@ async def run_sequence(
                 logger.error(f"Circular reference detected in sequence '{name}' is already in teh call chain {visited}")
                 raise SystemExit(1)
             logger.info(f"Running sub-sequence: '{name}'")
-            await run_sequence(sequences[name], poses, sequences, command_queue, result_queue, camera, visited | {name})
+            await run_sequence(sequences[name], poses, sequences, command_queue, result_queue, camera, barcode_camera, database, visited | {name})
 
         elif step_type == "pose":
             name = step["name"]
@@ -269,7 +269,7 @@ async def run_sequence(
 
             pose["pose_array"] = coords
 
-            await execute_poses(pose, command_queue, result_queue)
+            await execute_poses(pose, command_queue, result_queue) # Goto scan location
 
             pose_array = None
             while pose_array is None:
@@ -353,7 +353,44 @@ async def run_sequence(
 
                 await execute_poses(pickup, command_queue, result_queue)
 
+        elif step_type == "scan_barcode":
 
+            name = step["name"]
+
+            if name not in poses:
+                logger.error(f"Pose '{name}' not found in poses")
+                raise SystemExit(1)
+
+            await execute_poses(poses[name], command_queue, result_queue) # Move to barcode location
+
+            await asyncio.sleep(.8)
+
+            barcode = None
+            while barcode is None:
+                logger.info("Triggering camera...")
+
+                barcode = await barcode_camera.scan_barcode()
+
+                if barcode is None:
+                    logger.warning("Camera returned no barcode detection.")
+                    raw = await loop.run_in_executor(
+                        None, _prompt, "No object detected. [r]escan, [s]kip or [q]uit? "
+                    )
+                    choice = raw.strip().lower()
+                    if choice in ("q", "quit", "exit"):
+                        logger.info("Quit requested during camera step.")
+                        raise asyncio.CancelledError
+                    elif choice in ("s", "skip"):
+                        logger.info("Skip requested during camera step.")
+                        barcode = "NaN"
+                        break
+                    # Any other input → retry
+
+            position: str = step["position"]
+
+            logger.debug(f"scanned barcode: '{barcode}' for location '{position}'")
+
+            await database.add_panel(position, barcode)
 
         elif step_type == "wait":
             seconds = step.get("seconds", 0)
@@ -430,7 +467,7 @@ async def run_sequence(
             if _current_force_pose is not None:
                 update_offsets(_current_force_pose, step["cell_type"])
 
-        elif step["type"] == "paper":
+        elif step_type == "paper":
             scan_name = step["scan_name"]
             pickup_name = step["pickup_name"]
             bin_name = step["bin_name"]
@@ -479,7 +516,7 @@ async def run_sequence(
             loop_counter: int = 0
             retry_counter: int = 0
             while True:
-                result, pose_array = await camera.scan_box(cell_type)
+                result = await camera.scan_box(cell_type)
 
                 if result == PickupType.Foam or result == PickupType.Paper:
                     retry_counter = 0
@@ -547,18 +584,41 @@ async def main() -> None:
     command_queue: mp.Queue = mp.Queue()
     result_queue: mp.Queue = mp.Queue()
 
-    camera_1 = CognexCamera(ip=IP_CAMERA_TCP,
+    camera_1 = CameraTCP(ip=IP_CAMERA_TCP,
+        username="admin",
+        password="",
+    )
+
+    camera_2 = CameraCode(ip=IP_CAMERA_CODE,
         username="admin",
         password="",
     )
 
     try:
         await camera_1.connect()
+        logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}.")
     except Exception as e:
         logger.error(f"Failed to connect to camera (TCP): {e}")
+        # raise SystemExit(1) #TODO: Bring this back
+
+    try:
+        await camera_2.connect()
+        logger.info(f"Connected to Code camera: {IP_CAMERA_CODE}.")
+    except Exception as e:
+        logger.error(f"Failed to connect to camera (Code): {e}")
         # raise SystemExit(1)
 
-    logger.info(f"Connected to TCP camera: {IP_CAMERA_TCP}.")
+    # Create database
+
+    database = WingPanelDB()
+
+    wing_id = await camera_2.scan_qr()
+    if wing_id is None:
+        logger.error("Failed to scan QR code")
+        wing_id = "nan"
+    await database.start_wing(wing_id)
+
+    logger.info(f"Created database for wing {wing_id}")
 
     worker = mp.Process(
         target=robot_worker,
@@ -610,7 +670,7 @@ async def main() -> None:
 
         logger.info(f"Starting sequence → '{dest}'")
         try:
-            await run_sequence(sequences[dest], poses, sequences, command_queue, result_queue, camera_1)
+            await run_sequence(sequences[dest], poses, sequences, command_queue, result_queue, camera_1, camera_2, database)
         except SystemExit:
             # execute_poses already shut down the worker on error
             raise

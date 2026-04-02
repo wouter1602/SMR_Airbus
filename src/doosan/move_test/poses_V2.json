@@ -13,11 +13,13 @@
     { "name": "Spot 1-3 v2", "move_type": "linear", "pose_array": [ -524.89, 940.99, 71.24, 75.50, 178.54, 74.89 ] },
     { "name": "Spot 1-3", "move_type": "linear", "pose_array": [ -524.68, 936.20, 45.16, 92.81, 178.42, 92.22 ] },
     { "name": "Spot 1-4 up", "move_type": "linear", "pose_array": [ -190.45, 918.52, 90.00, 70.41, 178.47, 69.70 ] },
+    { "name": "Spot 1-4 v2", "move_type": "linear", "pose_array": [ -189.85, 921.40, 67.31, 60.48, 178.86, 59.87 ] },
     { "name": "Spot 1-4", "move_type": "linear", "pose_array": [ -190.45, 918.52, 42.14, 70.41, 178.47, 69.70 ] },
     { "name": "Spot 1-5 up", "move_type": "linear", "pose_array": [ 179.14, 919.95, 90.00, 62.39, 178.90, 61.86 ] },
+    { "name": "Spot 1-5 v2", "move_type": "linear", "pose_array": [ 180.55, 921.14, 67.67, 56.36, 178.86, 55.88 ] },
     { "name": "Spot 1-5", "move_type": "linear", "pose_array": [ 179.14, 919.95, 42.70, 62.39, 178.90, 61.86 ] },
     { "name": "Spot 1-6 up", "move_type": "linear", "pose_array": [ 514.02, 939.43, 90.00, 54.11, 178.64, 53.64 ] },
-    { "name": "Spot 1-6 v2", "move_type": "linear", "pose_array": [ 512.09, 944.68, 70.60, 40.91, 178.99, 40.04 ] },
+    { "name": "Spot 1-6 v2", "move_type": "linear", "pose_array": [ 515.62, 945.49, 70.15, 41.985, 178.89, 41.61 ] },
     { "name": "Spot 1-6", "move_type": "linear", "pose_array": [ 514.02, 939.43, 43.75, 54.11, 178.64, 53.64 ] },
     { "name": "Spot 2-2 up", "move_type": "linear", "pose_array": [ -909.55, 361.93, 90.00, 101.22, 178.54, -79.59 ] },
     { "name": "Spot 2-2 v2", "move_type": "linear", "pose_array": [ -912.27, 360.53, 63.10, 98.16, 178.82, -82.47 ] },
@@ -26,8 +28,10 @@
     { "name": "Spot 2-3 v2", "move_type": "linear", "pose_array": [ -525.60, 361.14, 60.01, 91.79, 179.04, -88.75 ] },
     { "name": "Spot 2-3", "move_type": "linear", "pose_array": [ -522.01, 365.77, 31.30, 92.58, 178.85, -88.42 ] },
     { "name": "Spot 2-4 up", "move_type": "linear", "pose_array": [ -188.22, 385.04, 90.00, 44.69, 178.40, -136.12 ] },
+    { "name": "Spot 2-4 v2", "move_type": "linear", "pose_array": [ -188.25, 383.56, 58.19, 76.18, 179.32, -104.73  ] },
     { "name": "Spot 2-4", "move_type": "linear", "pose_array": [ -188.22, 385.04, 30.93, 44.69, 178.40, -136.12 ] },
     { "name": "Spot 2-5 up", "move_type": "linear", "pose_array": [ 182.04, 386.44, 90.00, 73.97, 179.32, -107.00 ] },
+    { "name": "Spot 2-5 v2", "move_type": "linear", "pose_array": [ 180.09, 385.59, 58.40, 60.24, 179.37, -120.40 ] },
     { "name": "Spot 2-5", "move_type": "linear", "pose_array": [ 182.04, 386.44, 29.51, 73.97, 179.32, -107.00 ] },
     { "name": "Spot 2-6 up", "move_type": "linear", "pose_array": [ 516.44, 368.49, 90.00, 39.54, 179.47, -141.39 ] },
     { "name": "Spot 2-6 v2", "move_type": "linear", "pose_array": [ 513.14, 365.37, 59.06, 28.07, 179.49, -152.39 ] },
@@ -38,7 +42,8 @@
     { "name": "PRE-scan QR", "move_type": "joint", "pose_array": [ 88.55, 30.85, 99.73, 2.53, 64.13, -182.59 ] },
     { "name": "Center table", "move_type": "joint", "pose_array": [ 91.60, 24.76, 110.11, -0.20, 43.49, -86.45]},
     { "name": "Pickup above", "move_type": "linear", "pose_array": [ 391.878, -497.378, 100.00, -90.0, 180.0, 270.0 ] },
-    { "name": "Pickup above rotate", "move_type": "linear", "pose_array": [ 391.878, -497.378, 100.00, -90.0, 180.0, 90.0 ] },
+    { "name": "Pickup above rotate [L]", "move_type": "linear", "pose_array": [ 391.878, -497.378, 100.00, -90.0, 180.0, 90.0 ] },
+    { "name": "Pickup above rotate", "move_type": "joint", "pose_array": [ -54.89, 24.52, 113.35, 0.00, 42.13, -234.89 ] },
     { "name": "Camera scan type 1 [J]", "move_type": "joint", "pose_array": [ -41.27, 49.49, 37.16, 86.16, 41.36, -84.94 ] },
     { "name": "Camera scan type 1 [L]", "move_type": "linear", "pose_array": [ 998.48, -653.12, 587.96, 179.98, -90.02, 179.97 ] },
     { "name": "Camera scan type 3 [J]", "move_type": "joint", "pose_array": [ -69.47, 16.35, 90.24, 96.09, 70.35, -107.67 ] },
@@ -47,14 +52,20 @@
     { "name": "Camera scan type 2 [L]", "move_type": "linear", "pose_array": [ 5.93, -799.33, 587.96, 179.99, -90.02, 179.97 ] },
     { "name": "Camera scan box type 3 [J]", "move_type": "joint", "pose_array": [ -61.96, 17.01, 39.22, 73.51, 67.00, -52.85 ] },
     { "name": "Camera scan box type 2 [J]", "move_type": "joint", "pose_array": [ -104.03, 24.14, 28.67, 98.59, 101.14, -51.97 ] },
-    { "name": "pickup type 1", "move_type": "linear", "pose_array": [ 906.77, -501.94, -70.75, 108.68, -179.12, 108.91]},
+    { "name": "pickup type 1", "move_type": "linear", "pose_array": [ 906.77, -501.94, -70.75, 132.49, -179.01, 132.20]},
     { "name": "pickup type 2", "move_type": "linear", "pose_array": [ -102.91, -647.96, -84.75, 12.10, -179.68, 10.52 ]},
     { "name": "pickup type 3", "move_type": "linear", "pose_array": [ 389.83, -524.53, -84.75, 116.27, -179.66, 115.47 ]},
     { "name": "bin [J]", "move_type": "joint", "pose_array": [ -136.64, 41.85, 85.12, -0.39, 53.03, -138.03]},
-    { "name": "bin [L]", "move_type": "linear", "pose_array": [ -602.60, -614.95, 76.25, 135.87, 179.69, 134.25 ]}
+    { "name": "bin [L]", "move_type": "linear", "pose_array": [ -602.60, -614.95, 76.25, 135.87, 179.69, 134.25 ]},
+    { "name": "barcode type 1", "move_type": "linear", "pose_array": [ -176.76, 939.30, 108.78, 93.60, -165.85, 4.37]},
+    { "name": "barcode type 2", "move_type": "linear", "pose_array": [ -49.57, 977.26, 80.47, 93.41, -172.15, -176.02 ]},
+    { "name": "barcode type 3", "move_type": "linear", "pose_array": [ -33.14, 937.86, 101.18, 89.66, -167.90, -179.67 ]}
+
   ],
   "sequences": {
     "Move 1-3": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "1-3"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 1-3 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -62,22 +73,26 @@
       {"type": "pose", "name": "Center table"}
     ],
     "Move 1-4": [
-      {"type": "pose", "name": "Spot 1-4 up"},
-      {"type": "pose", "name": "Spot 1-4"},
+      {"type": "scan_barcode", "name": "barcode type 2", "position": "1-4"},
+      {"type": "pose", "name": "Center table"},
+      {"type": "place_down", "name": "Spot 1-4 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
-      {"type": "pose", "name": "Spot 1-4 up"},
+      {"type": "place_down_up"},
       {"type": "pose", "name": "Center table"}
     ],
     "Move 1-5": [
-      {"type": "pose", "name": "Spot 1-5 up"},
-      {"type": "pose", "name": "Spot 1-5"},
+      {"type": "scan_barcode", "name": "barcode type 3", "position": "1-5"},
+      {"type": "pose", "name": "Center table"},
+      {"type": "place_down", "name": "Spot 1-5 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
-      {"type": "pose", "name": "Spot 1-5 up"},
+      {"type": "place_down_up"},
       {"type": "pose", "name": "Center table"}
     ],
     "Move 1-6": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "1-6"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 1-6 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -85,6 +100,8 @@
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-2": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "2-2"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 2-2 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -92,6 +109,8 @@
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-3": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "2-3"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 2-3 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -99,22 +118,26 @@
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-4": [
-      {"type": "pose", "name": "Spot 2-4 up"},
-      {"type": "pose", "name": "Spot 2-4"},
+      {"type": "scan_barcode", "name": "barcode type 3", "position": "2-4"},
+      {"type": "pose", "name": "Center table"},
+      {"type": "place_down", "name": "Spot 2-4 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
-      {"type": "pose", "name": "Spot 2-4 up"},
+      {"type": "place_down_up"},
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-5": [
-      {"type": "pose", "name": "Spot 2-5 up"},
-      {"type": "pose", "name": "Spot 2-5"},
+      {"type": "scan_barcode", "name": "barcode type 2", "position": "2-5"},
+      {"type": "pose", "name": "Center table"},
+      {"type": "place_down", "name": "Spot 2-5 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
-      {"type": "pose", "name": "Spot 2-5 up"},
+      {"type": "place_down_up"},
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-6": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "2-6"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 2-6 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -122,6 +145,8 @@
       {"type": "pose", "name": "Center table"}
     ],
     "Move 2-7": [
+      {"type": "scan_barcode", "name": "barcode type 1", "position": "2-7"},
+      {"type": "pose", "name": "Center table"},
       {"type": "place_down", "name": "Spot 2-7 v2"},
       {"type": "air", "index": 1, "output": false},
       {"type": "wait", "seconds": 0.8},
@@ -166,7 +191,6 @@
       {"type": "camera", "name": "Camera scan type 2 [L]", "cell_type": 2},
       {"type": "air", "index": 1, "output": true},
       {"type": "wait", "seconds": 0.8},
-      {"type": "wait_for_user_input"},
       {"type": "camera_pickup"},
       {"type": "pose", "name": "Pickup above rotate"},
       {"type": "pose", "name": "Center table"}
@@ -176,7 +200,6 @@
       {"type": "camera", "name": "Camera scan type 3 [L]", "cell_type": 3},
       {"type": "air", "index": 1, "output": true},
       {"type": "wait", "seconds": 0.8},
-      {"type": "wait_for_user_input"},
       {"type": "camera_pickup"},
       {"type": "pose", "name": "Pickup above rotate"},
       {"type": "pose", "name": "Center table"}
@@ -231,6 +254,11 @@
       {"type": "sequence", "name": "paper type 3"},
       {"type": "sequence", "name": "pickup type 3"},
       {"type": "sequence", "name": "Move 1-5"}
+    ],
+    "All All": [
+      {"type": "sequence", "name": "All type 2"},
+      {"type": "sequence", "name": "All type 3"},
+      {"type": "sequence", "name": "All type 1"}
     ]
   }
 }
