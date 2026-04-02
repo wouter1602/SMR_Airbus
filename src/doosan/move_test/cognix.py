@@ -7,7 +7,7 @@ import urllib.request
 import io
 import logging
 
-from typing import Tuple
+from typing import Tuple, Any
 from enum import IntEnum
 
 try:
@@ -30,17 +30,18 @@ class PickupType(IntEnum):
 
 class CognexCamera:
 
-    def __init__(self, ip, username="admin", password=""):
-        self.ip = ip
-        self.username = username
-        self.password = password
-        self._reader = None
-        self._writer = None
+    def __init__(self, ip: str, username: str ="admin", password: str = "", port: int = 23):
+        self.ip: str = ip
+        self.port: int = port
+        self.username: str = username
+        self.password: str = password
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
 
     # ── connection ────────────────────────────────────────────────────
 
-    async def connect(self):
-        self._reader, self._writer = await asyncio.open_connection(self.ip, 23)
+    async def connect(self) -> None:
+        self._reader, self._writer = await asyncio.open_connection(self.ip, self.port)
 
         await self._read_until(b"User: ")
         self._writer.write((self.username + "\r\n").encode())
@@ -72,12 +73,12 @@ class CognexCamera:
 
     # ── camera actions ────────────────────────────────────────────────
 
-    async def trigger(self):
+    async def trigger(self)-> bool:
         """Fire the camera. Returns True on success."""
         resp = await self._send("SW8")
         return resp.strip() == "1"
 
-    async def read_cell(self, cell):
+    async def read_cell(self, cell: str) -> str | None:
         """
         Read a spreadsheet cell value.
         Examples: read_cell("B0"), read_cell("C0"), read_cell("D5")
@@ -86,9 +87,11 @@ class CognexCamera:
         col = "".join(c for c in cell if c.isalpha())
         row = "".join(c for c in cell if c.isdigit()) or "0"
         command = f"GV{col}{int(row):03d}"
-
-        self._writer.write((command + "\r\n").encode())
-        await self._writer.drain()
+        if self._writer is not None:
+            self._writer.write((command + "\r\n").encode())
+            await self._writer.drain()
+        else:
+            raise RuntimeError("Not connected")
 
         raw = await self._read_lines(2)
         lines = raw.decode(errors="replace").strip().splitlines()
@@ -97,20 +100,20 @@ class CognexCamera:
             return None
         return lines[1].strip() if len(lines) >= 2 else None
 
-    async def trigger_and_read_box(self, cells):
+    async def trigger_and_read_box(self, cells: list[str]) -> (dict[str, str | None]| None):
         await self.trigger()
         await asyncio.sleep(TRIGGER_WAIT_BOX)
         try:
             result = {cell: await self.read_cell(cell) for cell in cells}
         except Exception as e:
             logger.error(f"trigger_and_read_box failed: {e}")
-            return {None}
+            return None
         for cell, val in result.items():
             if val is None:
                 logger.warning(f"read_cell({cell}) returned None")
         return result
 
-    async def trigger_and_read_scan(self, cells):
+    async def trigger_and_read_scan(self, cells: list[str]) -> dict[str, str | None]:
         """
         Trigger the camera and read one or more cells.
         cells: list of cell names, e.g. ["B0", "C0", "D0"]
@@ -124,14 +127,14 @@ class CognexCamera:
                 logger.warning(f"read_cell({cell}) returned None")
         return result
 
-    async def set_online(self):
+    async def set_online(self) -> None:
         await self._send("SO1")
         await asyncio.sleep(0.5)
 
-    async def set_offline(self):
+    async def set_offline(self) -> None:
         await self._send("SO0")
 
-    async def get_image(self):
+    async def get_image(self) -> Image.Image | None:
         """
         Fetch the current camera image over HTTP.
         Returns a PIL Image object (requires Pillow: pip install Pillow).
@@ -140,7 +143,7 @@ class CognexCamera:
         if Image is None:
             raise ImportError("Install Pillow first:  pip install Pillow")
 
-        def _fetch():
+        def _fetch() -> Image.Image:
             opener = urllib.request.build_opener()
             if self.username:
                 pm = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -157,24 +160,27 @@ class CognexCamera:
 
         return await asyncio.to_thread(_fetch)
 
-    async def show_image(self):
+    async def show_image(self) -> None:
         """Fetch and display the image in a window (requires Pillow)."""
         img = await self.get_image()
-        img.show()
+        if img is not None:
+            img.show()
 
-    async def change_job_box(self):
+    async def change_job_box(self) -> None:
         await self._send("SIA0261")
         await asyncio.sleep(0.8)
 
-    async def change_job_scan(self):
+    async def change_job_scan(self) -> None:
         await self._send("SIA0260")
         await asyncio.sleep(0.8)
 
-    async def scan_box(self, type: int) -> Tuple[PickupType, np.ndarray | None]:
+    async def scan_box(self, type: int) -> PickupType:
 
-        def _convert(value) -> bool:
-            logger.debug(f"Value to convert: {value}")
+        def _convert(value: str | None) -> bool:
+
             if value == '#ERR':
+                return False
+            elif value is None:
                 return False
             try:
                 return True if float(value) == 1.0 else False
@@ -191,6 +197,9 @@ class CognexCamera:
 
         scan_box_result = await self.trigger_and_read_box(position_cells)
 
+        if scan_box_result is None:
+            return PickupType.No_detect
+
         # convert result
         paper = _convert(scan_box_result['A42'])
         panel_M = _convert(scan_box_result['B42'])
@@ -200,67 +209,57 @@ class CognexCamera:
         foam = _convert(scan_box_result['F42'])
         left_gap = _convert(scan_box_result['G42'])
 
-        # decide output
+        # decide output #TODO: rewrite this if statement nesting
         if empty:
-            return (PickupType.Empty, None)
+            return PickupType.Empty
         elif paper:
-            return (PickupType.Paper, None)
+            return PickupType.Paper
         elif foam:
-            return (PickupType.Foam, None)
+            return PickupType.Foam
         elif panel:
             if type == 1:
                 await self.change_job_scan()
                 position_cells_scan = ["Q35"]
                 data = await self.trigger_and_read_scan(position_cells_scan)
                 if data is None:
-                    return (PickupType.No_detect, None)
+                    return PickupType.No_detect
                 else:
                     if isinstance(data['Q35'], float):
                         lenght = int(float(data['Q35']))
                     else:
-                        return (PickupType.Correct_panel, None)
+                        return PickupType.Correct_panel
                     if 325<lenght<370:
-                        # position_cells_scan_1 = ["U38", "U39", "U40", "U41", "U42", "U43"]
-                        # data = await self.trigger_and_read_scan(position_cells_scan_1)
 
-                        # def to_float(v):
-                        #     try:
-                        #         return float(v)
-                        #     except ValueError:
-                        #         return None
-
-                        # values = np.array([to_float(data[c]) if data[c] is not None else np.nan for c in position_cells_scan_1], dtype=np.float32)
-
-                        return (PickupType.Correct_panel, None)
+                        return PickupType.Correct_panel
                     else:
-                        return (PickupType.Wrong_Panel, None)
+                        return PickupType.Wrong_Panel
 
             elif type == 2:
                 if found:
                     if panel_M:
                         if not left_gap:
-                            return (PickupType.Correct_panel, None)
+                            return PickupType.Correct_panel
                         else:
-                            return (PickupType.Wrong_Panel, None)
+                            return PickupType.Wrong_Panel
                     else:
-                        return (PickupType.Wrong_Panel, None)
+                        return PickupType.Wrong_Panel
                 else:
-                    return (PickupType.No_detect, None)
+                    return PickupType.No_detect
             elif type == 3:
                 if found:
                     if panel_M:
                         if left_gap:
-                            return (PickupType.Correct_panel, None)
+                            return PickupType.Correct_panel
                         else:
-                            return (PickupType.Wrong_Panel, None)
+                            return PickupType.Wrong_Panel
                     else:
-                        return (PickupType.Wrong_Panel, None)
+                        return PickupType.Wrong_Panel
                 else:
-                    return (PickupType.No_detect, None)
+                    return PickupType.No_detect
         else:
-            return (PickupType.No_detect, None)
+            return PickupType.No_detect
 
-        return (PickupType.No_detect, None)
+        return PickupType.No_detect
 
     async def scan_scan(self, type: int) -> np.ndarray:
         await self.change_job_scan()
@@ -276,7 +275,9 @@ class CognexCamera:
 
         data = await self.trigger_and_read_scan(position_cells)
 
-        def to_float(v):
+        def to_float(v: str | None) -> float | None:
+            if v is None:
+                return None
             try:
                 return float(v)
             except ValueError:
@@ -288,7 +289,14 @@ class CognexCamera:
 
     # ── internals ────────────────────────────────────────────────────-
 
-    async def _send(self, command):
+    async def _send(self, command: str) -> str:
+        if self._writer is None:
+            raise RuntimeError("Not connected")
+
+        if self._reader is None:
+            raise RuntimeError("Not connected")
+
+
         self._writer.write((command + "\r\n").encode())
         await self._writer.drain()
         try:
@@ -297,7 +305,10 @@ class CognexCamera:
             data = b""
         return data.decode(errors="replace").strip()
 
-    async def _read_until(self, *markers, timeout=4.0):
+    async def _read_until(self, *markers, timeout: float = 4.0) -> bytes:
+        if self._reader is None:
+            raise RuntimeError("Not connected")
+
         buf = b""
         try:
             async with asyncio.timeout(timeout):
@@ -312,7 +323,9 @@ class CognexCamera:
             pass
         return buf
 
-    async def _read_lines(self, n, timeout=5.0) -> bytes:
+    async def _read_lines(self, n, timeout: float=5.0) -> bytes:
+        if self._reader is None:
+            raise RuntimeError("Not connected")
         buf = b""
         try:
             async with asyncio.timeout(timeout):
