@@ -24,27 +24,75 @@
     ]
   },
   {
-    "name": "Camera scan V2",
+    "name": "Camera scan type 1 [J]",
     "move_type": "joint",
     "pose_array": [
-      -69.47,
-      16.56,
-      90.80,
-      96.37,
-      70.43,
-      -108.51
+      -41.27,
+      49.49,
+      37.16,
+      86.16,
+      41.36,
+      -84.94
     ]
   },
   {
-    "name": "Camera scan V2",
+    "name": "Camera scan type 1 [L]",
+    "move_type": "linear",
+    "pose_array": [
+      998.48,
+      -653.12,
+      587.96,
+      179.98,
+      -90.02,
+      179.97
+    ]
+  },
+  {
+    "name": "Camera scan type 3 [J]",
+    "move_type": "joint",
+    "pose_array": [
+      -69.47,
+      16.35,
+      90.24,
+      96.09,
+      70.35,
+      -107.67
+    ]
+  },
+  {
+    "name": "Camera scan type 3 [L]",
     "move_type": "linear",
     "pose_array": [
       483.39,
       -653.08,
-      579.96,
+      587.96,
       179.99,
       -90.01,
       179.96
+    ]
+  },
+  {
+    "name": "Camera scan type 2 [J]",
+    "move_type": "joint",
+    "pose_array": [
+      -106.19,
+      26.46,
+      75.9,
+      86.43,
+      105.79,
+      -102.89
+    ]
+  },
+  {
+    "name": "Camera scan type 2 [L]",
+    "move_type": "linear",
+    "pose_array": [
+      5.93,
+      -799.33,
+      587.96,
+      179.99,
+      -90.02,
+      179.97
     ]
   },
   {
@@ -81,18 +129,6 @@
       90.0,
       -90.0,
       -90.0
-    ]
-  },
-  {
-    "name": "force test",
-    "move_type": "linear",
-    "pose_array": [
-      1060.42,
-      -653.08,
-      579.96,
-      179.99,
-      -90.01,
-      179.96
     ]
   },
   {
@@ -204,15 +240,75 @@
     ]
   },
   {
-    "name": "Puckup above",
+    "name": "Pickup above",
     "move_type": "linear",
     "pose_array": [
       391.878,
       -497.378,
-      90.00,
+      100.00,
       -90.0,
       180.0,
-      90.0
+      -90.0
+    ]
+  },
+  {
+    "name": "force_test 1",
+    "move_type": "linear",
+    "pose_array": [
+      -86.31,
+      -640.12,
+      -64.17,
+      168.56,
+      179.05,
+      -12.82
+    ]
+  },
+  {
+    "name": "force_test 2",
+    "move_type": "force",
+    "pose_array": [
+      -86.31,
+      -640.12,
+      -164.17,
+      168.56,
+      179.05,
+      -12.82
+    ]
+  },
+  {
+    "name": "table",
+    "move_type": "linear",
+    "pose_array": [
+      531.86,
+      427.35,
+      60.0,
+      39.94,
+      179.36,
+      -140.96
+    ]
+  },
+  {
+    "name": "table_2",
+    "move_type": "force",
+    "pose_array": [
+      531.86,
+      427.35,
+      -40.0,
+      39.94,
+      179.36,
+      -140.96
+    ]
+  },
+  {
+    "name": "tmp_pickup",
+    "move_type": "joint",
+    "pose_array": [
+      -49.68,
+      28.86,
+      109.40,
+      3.91,
+      40.28,
+      -50.78
     ]
   }
 ]
