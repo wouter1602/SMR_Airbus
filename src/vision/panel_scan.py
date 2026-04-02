@@ -273,6 +273,7 @@ def scan_box_2():
         return PickupType.Empty
      
     elif paper==1:
+        
         return PickupType.Paper
         #do (3_bin)
     elif foam ==1:
@@ -440,14 +441,14 @@ cam2= CognexCamera("192.168.0.10", username='admin', password="")
 
 cam.connect()
 cam2.connect()
-
+cam.trigger()
+cam.get_image()
+cam.show_image()
 cam2.trigger()
+start_wing(123)
+add_panel("1-1", 123)
+#print(scan_box_1())
 
-start_wing(cam2.read_cell("C2"))
-
-panelID=cam2.read_cell("C4")
-place="2-2" # if it needs to be a different format, let me know
-add_panel("2-2",cam2.read_cell("C4"))
 
 
 #output=scan_box_3()
