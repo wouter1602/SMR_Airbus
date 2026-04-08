@@ -9,36 +9,16 @@
     { "name": "Camera scan + 20 cm", "move_type": "linear", "pose_array": [ 483.43, -653.05, 789.95, 180.0, -90.01, 179.95 ] },
     { "name": "scan_box", "move_type": "linear", "pose_array": [ 370.000, -761.000, -939.000, 90.0, -90.0, -90.0 ] },
     { "name": "force test", "move_type": "linear", "pose_array": [ 1060.42, -653.08, 579.96, 179.99, -90.01, 179.96 ] },
-    { "name": "Spot 1-3 up", "move_type": "linear", "pose_array": [ -524.68, 936.20, 90.00, 92.81, 178.42, 92.22 ] },
-    { "name": "Spot 1-3 v2", "move_type": "linear", "pose_array": [ -524.89, 940.99, 71.24, 75.50, 178.54, 74.89 ] },
-    { "name": "Spot 1-3", "move_type": "linear", "pose_array": [ -524.68, 936.20, 45.16, 92.81, 178.42, 92.22 ] },
-    { "name": "Spot 1-4 up", "move_type": "linear", "pose_array": [ -190.45, 918.52, 90.00, 70.41, 178.47, 69.70 ] },
-    { "name": "Spot 1-4 v2", "move_type": "linear", "pose_array": [ -189.85, 921.40, 67.31, 60.48, 178.86, 59.87 ] },
-    { "name": "Spot 1-4", "move_type": "linear", "pose_array": [ -190.45, 918.52, 42.14, 70.41, 178.47, 69.70 ] },
-    { "name": "Spot 1-5 up", "move_type": "linear", "pose_array": [ 179.14, 919.95, 90.00, 62.39, 178.90, 61.86 ] },
-    { "name": "Spot 1-5 v2", "move_type": "linear", "pose_array": [ 180.55, 921.14, 67.67, 56.36, 178.86, 55.88 ] },
-    { "name": "Spot 1-5", "move_type": "linear", "pose_array": [ 179.14, 919.95, 42.70, 62.39, 178.90, 61.86 ] },
-    { "name": "Spot 1-6 up", "move_type": "linear", "pose_array": [ 514.02, 939.43, 90.00, 54.11, 178.64, 53.64 ] },
-    { "name": "Spot 1-6 v2", "move_type": "linear", "pose_array": [ 515.62, 945.49, 70.15, 41.985, 178.89, 41.61 ] },
-    { "name": "Spot 1-6", "move_type": "linear", "pose_array": [ 514.02, 939.43, 43.75, 54.11, 178.64, 53.64 ] },
-    { "name": "Spot 2-2 up", "move_type": "linear", "pose_array": [ -909.55, 361.93, 90.00, 101.22, 178.54, -79.59 ] },
-    { "name": "Spot 2-2 v2", "move_type": "linear", "pose_array": [ -912.27, 360.53, 63.10, 98.16, 178.82, -82.47 ] },
-    { "name": "Spot 2-2", "move_type": "linear", "pose_array": [ -909.55, 361.93, 34.62, 101.22, 178.54, -79.59 ] },
-    { "name": "Spot 2-3 up", "move_type": "linear", "pose_array": [ -522.01, 365.77, 90.00, 92.58, 178.85, -88.42 ] },
-    { "name": "Spot 2-3 v2", "move_type": "linear", "pose_array": [ -525.60, 361.14, 60.01, 91.79, 179.04, -88.75 ] },
-    { "name": "Spot 2-3", "move_type": "linear", "pose_array": [ -522.01, 365.77, 31.30, 92.58, 178.85, -88.42 ] },
-    { "name": "Spot 2-4 up", "move_type": "linear", "pose_array": [ -188.22, 385.04, 90.00, 44.69, 178.40, -136.12 ] },
-    { "name": "Spot 2-4 v2", "move_type": "linear", "pose_array": [ -188.25, 383.56, 58.19, 76.18, 179.32, -104.73  ] },
-    { "name": "Spot 2-4", "move_type": "linear", "pose_array": [ -188.22, 385.04, 30.93, 44.69, 178.40, -136.12 ] },
-    { "name": "Spot 2-5 up", "move_type": "linear", "pose_array": [ 182.04, 386.44, 90.00, 73.97, 179.32, -107.00 ] },
-    { "name": "Spot 2-5 v2", "move_type": "linear", "pose_array": [ 180.09, 385.59, 58.40, 60.24, 179.37, -120.40 ] },
-    { "name": "Spot 2-5", "move_type": "linear", "pose_array": [ 182.04, 386.44, 29.51, 73.97, 179.32, -107.00 ] },
-    { "name": "Spot 2-6 up", "move_type": "linear", "pose_array": [ 516.44, 368.49, 90.00, 39.54, 179.47, -141.39 ] },
-    { "name": "Spot 2-6 v2", "move_type": "linear", "pose_array": [ 513.14, 365.37, 59.06, 28.07, 179.49, -152.39 ] },
-    { "name": "Spot 2-6", "move_type": "linear", "pose_array": [ 516.44, 368.49, 30.21, 39.54, 179.47, -141.39 ] },
-    { "name": "Spot 2-7 up", "move_type": "linear", "pose_array": [ 900.91, 369.62, 90.00, 27.80, 179.56, -152.75 ] },
-    { "name": "Spot 2-7 v2", "move_type": "linear", "pose_array": [ 899.72, 366.89, 62.52, 167.93, -179.19, -12.47  ] },
-    { "name": "Spot 2-7", "move_type": "linear", "pose_array": [ 900.91, 369.62, 33.69, 27.80, 179.56, -152.75 ] },
+    { "name": "Spot 1-3 v2", "move_type": "linear", "pose_array": [ -525.33, 940.27, 61.24, 70.09, 178.59, 69.35 ] },
+    { "name": "Spot 1-4 v2", "move_type": "linear", "pose_array": [ -189.78, 921.02, 55.96, 61.92, 178.78, 61.23 ] },
+    { "name": "Spot 1-5 v2", "move_type": "linear", "pose_array": [ 177.48, 921.64, 56.125, 50.47, 178.90, 49.64 ] },
+    { "name": "Spot 1-6 v2", "move_type": "linear", "pose_array": [ 510.99, 943.80, 60.15, 40.42, 178.88, 39.81 ] },
+    { "name": "Spot 2-2 v2", "move_type": "linear", "pose_array": [ -908.42, 359.68, 53.10, 98.48, 178.92, -82.47 ] },
+    { "name": "Spot 2-3 v2", "move_type": "linear", "pose_array": [ -519.42, 361.71, 60.01, 84.81, 179.13, -96.32 ] },
+    { "name": "Spot 2-4 v2", "move_type": "linear", "pose_array": [ -187.87, 383.51, 47.40, 68.825, 179.43, -112.095 ] },
+    { "name": "Spot 2-5 v2", "move_type": "linear", "pose_array": [ 180.87, 385.35, 47.99, 51.78, 179.52, -129.21 ] },
+    { "name": "Spot 2-6 v2", "move_type": "linear", "pose_array": [ 514.93, 361.70, 49.06, 23.03, 179.45, -157.305 ] },
+    { "name": "Spot 2-7 v2", "move_type": "linear", "pose_array": [ 900.18, 366.22, 52.52, 175.41, -179.36, -5.28 ] },
     { "name": "PRE-scan QR", "move_type": "joint", "pose_array": [ 88.55, 30.85, 99.73, 2.53, 64.13, -182.59 ] },
     { "name": "Center table", "move_type": "joint", "pose_array": [ 91.60, 24.76, 110.11, -0.20, 43.49, -86.45]},
     { "name": "Pickup above", "move_type": "linear", "pose_array": [ 391.878, -497.378, 100.00, -90.0, 180.0, 270.0 ] },
@@ -259,6 +239,56 @@
       {"type": "sequence", "name": "All type 2"},
       {"type": "sequence", "name": "All type 3"},
       {"type": "sequence", "name": "All type 1"}
+    ],
+    "spot 2-2": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 2-2"}
+    ],
+    "spot 1-3": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 1-3"}
+    ],
+    "spot 2-3": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 2-3"}
+    ],
+    "spot 1-4": [
+      {"type": "sequence", "name": "paper type 2"},
+      {"type": "sequence", "name": "pickup type 2"},
+      {"type": "sequence", "name": "Move 1-4"}
+    ],
+    "spot 2-4": [
+      {"type": "sequence", "name": "paper type 3"},
+      {"type": "sequence", "name": "pickup type 3"},
+      {"type": "sequence", "name": "Move 2-4"}
+    ],
+    "spot 1-5": [
+      {"type": "sequence", "name": "paper type 3"},
+      {"type": "sequence", "name": "pickup type 3"},
+      {"type": "sequence", "name": "Move 1-5"}
+    ],
+    "spot 2-5": [
+      {"type": "sequence", "name": "paper type 2"},
+      {"type": "sequence", "name": "pickup type 2"},
+      {"type": "sequence", "name": "Move 2-5"}
+    ],
+    "spot 1-6": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 1-6"}
+    ],
+    "spot 2-6": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 2-6"}
+    ],
+    "spot 2-7": [
+      {"type": "sequence", "name": "paper type 1"},
+      {"type": "sequence", "name": "pickup type 1"},
+      {"type": "sequence", "name": "Move 2-7"}
     ]
   }
 }
