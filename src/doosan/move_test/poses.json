@@ -300,6 +300,17 @@
     ]
   },
   {
+    "name": "Spot 1-4 v2",
+    "move_type": "movejx",
+    "pose_array": [ -189.85, 921.40, 67.31, 60.48, 178.86, 59.87 ],
+    "solution_space": 1
+  },
+  {
+    "name": "Center table",
+    "move_type": "joint",
+    "pose_array": [ 91.60, 24.76, 110.11, -0.20, 43.49, -86.45]
+  },
+  {
     "name": "tmp_pickup",
     "move_type": "joint",
     "pose_array": [

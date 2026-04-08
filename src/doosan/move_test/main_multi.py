@@ -68,13 +68,17 @@ async def wait_for_motion_complete(
 
 async def execute_poses(pose: dict, command_queue: mp.Queue, result_queue: mp.Queue) -> None:
     move_type = pose["move_type"]
-    if move_type not in ("joint", "linear", "force"):
+    if move_type not in ("joint", "linear", "force", "movejx"):
         logger.warning(f"Wrong move type: {move_type}")
         return
 
     logger.debug(f"Executing pose: {pose['name']} [{move_type}]")
     pose_array = np.array(pose["pose_array"], dtype=np.float32)
-    command_queue.put((move_type, pose_array))
+    if move_type == "movejx":
+        solution_space = pose["solution_space"]
+        command_queue.put((move_type, pose_array, solution_space))
+    else:
+        command_queue.put((move_type, pose_array))
 
     try:
         await asyncio.gather(

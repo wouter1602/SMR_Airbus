@@ -40,6 +40,9 @@ DOOSAN_LIN_ACCELERATION = 75 #30 #75
 MAX_FORCE_BOX = 5.5
 MAX_FORCE_PLACE_DOWN = 15.0
 
+class RetrySequenceError(Exception):
+    """ """
+
 
 logging.basicConfig(
     level=logging.DEBUG,

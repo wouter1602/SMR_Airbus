@@ -72,6 +72,7 @@ class RobotController:
         self.move_handlers = {
             "joint": self._amovej,
             "linear": self._amovel,
+            "movejx": self._ammovejx,
         }
 
         self.in_force_mode: bool = False
@@ -127,6 +128,29 @@ class RobotController:
             move_reference=drfl.MOVE_REFERENCE.Base,
             blending_type=drfl.BLENDING_SPEED_TYPE.Duplicate,
             app_type=drfl.DR_MV_APP.NoApp,
+        )
+
+    def _ammovejx(self,
+        pose: np.ndarray,
+        solution_space,
+        speed: float | None = None,
+        acc: float | None = None,
+    ) -> bool:
+
+        if speed is None:
+            speed = self.speed
+        if acc is None:
+            acc = self.acceleration
+
+        return self.robot.amovejx(
+            pos = pose,
+            solution_space=solution_space,
+            vel = speed,
+            acc = acc,
+            time = 0.0,
+            move_mode=drfl.MOVE_MODE.Absolute,
+            move_reference=drfl.MOVE_REFERENCE.Base,
+            blending_type=drfl.BLENDING_SPEED_TYPE.Duplicate,
         )
 
     def _enable_compliance(self) -> bool:
@@ -349,9 +373,14 @@ class RobotController:
                 result_queue.put(f"error:Unknown move type: {move_type}")
                 continue
 
-            if not handler(pose_array):
-                result_queue.put("error:Move command failed")
-                continue
+            if move_type == "movejx":
+                if not handler(pose_array, output):
+                    result_queue.put("error: Movement timed out")
+                    continue
+            else:
+                if not handler(pose_array):
+                    result_queue.put("error:Move command failed")
+                    continue
 
             if not self.is_moving(MOVE_TIMEOUT):
                 result_queue.put("error: Movement timed out")
