@@ -1,7 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
     File loads different positions from a JSON file and gives the user the option to move the robot to each position.
     The robot runs in a separate process to work around the C++ library's GIL-holding behavior.
+
+    Currently only used for debugging.
 """
 
 import multiprocessing as mp

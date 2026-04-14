@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
     Robot controller class.
     Owns the robot connection and executes move commands received via command_queue.
@@ -17,6 +18,7 @@ MOVE_TIMEOUT = 60.0   # seconds
 POLL_INTERVAL = 0.01  # seconds
 
 # Tool configuration
+# Needed for tool compliance control
 TOOL_SHAPE_NAME = "Tool_Shape"
 TOOL_NAME = "Tool#20"
 # TOOL_WEIGHT = 4.430 #kg
@@ -40,6 +42,11 @@ FORCE_PROBE_DIR = np.array([0,   0,    1,   0,   0,   0  ], dtype=np.uint8)     
 
 
 class RobotController:
+    """
+    Robot controller class.
+    Owns the robot connection and executes move commands received via command_queue.
+
+    """
 
     def __init__(
         self,
@@ -52,6 +59,19 @@ class RobotController:
         force_speed: float = 5.0,
         force_acceleration: float = 5.0,
     ) -> None:
+        """
+        Initializes the RobotController with the given parameters.
+
+        Params:
+            ip_address (str): The IP address of the robot.
+            port (int): The port number of the robot.
+            speed (float): The default joint speed of the robot.
+            acceleration (float): The default joint acceleration of the robot.
+            lin_speed (float): The default linear speed of the robot.
+            lin_acceleration (float): The default linear acceleration of the robot.
+            force_speed (float): The default force speed of the robot.
+            force_acceleration (float): The default force acceleration of the robot.
+        """
         self.ip_address = ip_address
         self.port = port
         self.speed = speed
@@ -81,6 +101,10 @@ class RobotController:
     # ── Callbacks ──
 
     def _on_monitoring_access_control(self, access: drfl.MONITORING_ACCESS_CONTROL) -> None:
+        """
+        Callback for monitoring access control.
+        Logs the access control status and updates the get_control_access flag.
+        """
         access_str = drfl.MONITORING_ACCESS_CONTROL(access).name
         logger.debug(f"[on_monitoring_access_control] {access_str} [{access}]")
         if access == drfl.MONITORING_ACCESS_CONTROL.Grant:
@@ -91,6 +115,10 @@ class RobotController:
             self.get_control_access = False
 
     def _on_monitoring_state(self, state: drfl.ROBOT_STATE) -> None:
+        """
+        Callback for monitoring state.
+        Logs the robot state.
+        """
         state_str = drfl.ROBOT_STATE(state).name
         logger.debug(f"[on_monitoring_state] {state_str} [{state}]")
         self.is_in_standby = (state == drfl.ROBOT_STATE.Standby)
@@ -103,6 +131,17 @@ class RobotController:
         speed: float | None = None,
         acc: float | None = None
     ) -> bool:
+        """
+        Executes a joint move to the given pose.
+
+        Params:
+            pose (np.ndarray): The target pose.
+            speed (float | None): The speed of the move.
+            acc (float | None): The acceleration of the move.
+
+        Returns:
+            bool: True if the move was successful, False otherwise.
+        """
         return self.robot.amovej(
             pos=pose,
             vel=speed if speed is not None else self.speed,
@@ -117,6 +156,17 @@ class RobotController:
         speed: float | None = None,
         acc: float | None = None
     ) -> bool:
+        """
+        Executes a linear move to the given pose.
+
+        Params:
+            pose (np.ndarray): The target pose.
+            speed (float | None): The speed of the move.
+            acc (float | None): The acceleration of the move.
+
+        Returns:
+            bool: True if the move was successful, False otherwise.
+        """
         velocity = np.array([speed if speed is not None else self.lin_speed, 0], dtype=np.float32)
         acceleration = np.array([acc if acc is not None else self.lin_acceleration, 0], dtype=np.float32)
 
@@ -137,7 +187,18 @@ class RobotController:
         speed: float | None = None,
         acc: float | None = None,
     ) -> bool:
+        """
+        Move the robot along a joint path to the given pose.
 
+        Params:
+            pose (np.ndarray): The target pose as a 6D array (x, y, z, rx, ry, rz).
+            solution_space: The solution space to use for the move.
+            speed (float | None): The speed to move at, or None to use the robot's speed.
+            acc (float | None): The acceleration to use, or None to use the robot's acceleration.
+
+        Returns:
+            bool: True if the move was successful, False otherwise.
+        """
         if speed is None:
             speed = self.speed
         if acc is None:
@@ -157,6 +218,9 @@ class RobotController:
     def _enable_compliance(self) -> bool:
         """
         Enable task compliance control with the configured stifness.
+
+        Returns:
+            bool: True if the compliance control was enabled successfully, False otherwise.
         """
         return self.robot.task_compliance_ctrl(
             fTargetStiffness=COMPLIANCE_STIFFNESS,
@@ -167,19 +231,39 @@ class RobotController:
     def _disable_compliance(self) -> bool:
         """
         Disable task compliance control.
+
+        Returns:
+            bool: True if the compliance control was disabled successfully, False otherwise.
         """
         self.in_force_mode = False
         return self.robot.release_compliance_ctrl()
 
     def _amove_force(self, pose: np.ndarray) -> bool:
+        """
+        Move the robot in force mode to the given pose.
 
-        time.sleep(0.5)
+        Params:
+            pose (np.ndarray): The target pose as a 6D array (x, y, z, rx, ry, rz).
+
+        Returns:
+            bool: True if the move was successful, False otherwise.
+        """
+        time.sleep(0.5) # Give robot time to enable force mode
         self.in_force_mode = True
         return self._amovel(pose, speed=self.force_speed, acc=self.force_acceleration)
 
     # --- Check for movement ---
     def is_moving(self, timeout: float) -> bool:
+        """
+        Check if the robot is currently moving.
+        Also checks the force the robot is exerting in Z axis if force mode is enabled.
 
+        Params:
+            timeout (float): The maximum time to wait for the robot to stop moving.
+
+        Returns:
+            bool: True if the robot is done moving, False if it is still moving or timed out.
+        """
         once: bool = False
         time.sleep(0.5)
 
@@ -217,7 +301,10 @@ class RobotController:
 
     def connect(self) -> None:
         """
-        Open connection and bring robot to ready state. Raises RuntimeError on failure.
+        Open connection and bring robot to ready state.
+
+        Raises:
+            RuntimeError: If the robot fails to open a connection or does not enter a ready state.
         """
         self.robot.set_on_monitoring_access_control(self._on_monitoring_access_control)
         self.robot.set_on_monitoring_state(self._on_monitoring_state)
@@ -299,6 +386,9 @@ class RobotController:
 
 
     def disconnect(self) -> None:
+        """
+        Close the connection to the robot and clean up any resources.
+        """
         self.robot.del_tool(TOOL_NAME) #Remove tool NEEDS ROBOT_MODE MANUAL
         self.robot.close_connection()
         logger.info("Connection closed")
@@ -306,6 +396,13 @@ class RobotController:
     # ── Command loop ──
 
     def run(self, command_queue: mp.Queue, result_queue: mp.Queue) -> None:
+        """
+        Run the robot worker loop, processing commands from the command queue and putting results into the result queue.
+
+        Args:
+            command_queue (mp.Queue): The queue from which to get commands.
+            result_queue (mp.Queue): The queue into which to put results.
+        """
         try:
             self.connect()
         except RuntimeError as e:
@@ -407,7 +504,19 @@ def robot_worker(
     lin_speed: float = 60,
     lin_acceleration: float = 35,
 ) -> None:
-    """Entry point for mp.Process — instantiates and runs the RobotController."""
+    """
+    Entry point for mp.Process — instantiates and runs the RobotController.
+
+    params:
+        command_queue (mp.Queue): The queue from which to get commands.
+        result_queue (mp.Queue): The queue into which to put results.
+        ip_address (str): The IP address of the robot.
+        port (int): The port number of the robot.
+        speed (float, optional): The speed for joint movements. Defaults to 20.
+        acceleration (float, optional): The acceleration for joint movements. Defaults to 10.
+        lin_speed (float, optional): The speed for linear movements. Defaults to 60.
+        lin_acceleration (float, optional): The acceleration for linear movements. Defaults to 35.
+    """
     controller = RobotController(ip_address, port,
         speed=speed, acceleration=acceleration,
         lin_speed=lin_speed, lin_acceleration=lin_acceleration)

@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Main Python file to control the Doosan robot for the SMR Airbus Minor prjecct.
+Loads in the poses in the "poses_V2.json" file for movement.
+Loads in the Camera's
+And executes poses.
+"""
+from typing import Tuple
 import math
 import multiprocessing as mp
 import logging
@@ -39,10 +46,8 @@ DOOSAN_LIN_ACCELERATION = 200 #30 #75
 DOOSAN_LIN_SPEED_SLOW = 130
 DOOSAN_LIN_ACCELERATION_SLOW = 60
 
-
 MAX_FORCE_BOX = 7.0 #5.5
 MAX_FORCE_PLACE_DOWN = 15.0
-
 
 # Pickup settings
 THETA_DEG = 15 # degrees
@@ -73,6 +78,15 @@ async def wait_for_motion_complete(
     result_queue: mp.Queue,
     timeout: float = MOVE_TIMEOUT,
 ) -> None:
+    """
+    Function that waits for motion to complete.
+
+    Params:
+        result_queue (mp.Queue): Queue that receives the result of the motion.
+        timeout (float): Timeout for waiting for motion to complete.
+    Raises:
+        TimeoutError: If motion does not complete within the timeout.
+    """
     global _currently_moving, _current_force_pose
     loop = asyncio.get_running_loop()
     _currently_moving = True
@@ -97,7 +111,17 @@ async def execute_poses(
     command_queue: mp.Queue,
     result_queue: mp.Queue
 ) -> None:
+    """
+    Executes a pose on the robot.
+    This is done by sending the pose command to the command queue and waiting for the result.
 
+    Params:
+        pose (dict): Dictionary containing the pose to execute.
+        command_queue (mp.Queue): Queue to send the pose command to.
+        result_queue (mp.Queue): Queue to receive the result of the motion.
+    Raises:
+        RuntimeError: If the motion does not complete successfully.
+    """
     move_type = pose["move_type"]
     if move_type not in ("joint", "linear", "force"):
         logger.warning(f"Wrong move type: {move_type}")
@@ -135,6 +159,15 @@ async def toggle_air(
     index: drfl.GPIO_CTRLBOX_DIGITAL_INDEX = drfl.GPIO_CTRLBOX_DIGITAL_INDEX.Index_1,
     output: bool | None = None
 ) -> None:
+    """
+    Toggles the air valve on or off.
+
+    Params:
+        command_queue (mp.Queue): Queue to send the toggle command to.
+        result_queue (mp.Queue): Queue to receive the result of the motion.
+        index (drfl.GPIO_CTRLBOX_DIGITAL_INDEX): Index of the air valve to toggle.
+        output (bool | None): Output state to set (True = on, False = off, None = toggle).
+    """
     command_queue.put(("toggle_air", index, output))
     await wait_for_motion_complete(result_queue=result_queue)
 
@@ -160,6 +193,9 @@ async def load_config(filepath: str | Path) -> tuple[dict, str | None, dict]:
         }
     }
 
+    Params:
+        filepath (str | Path): Path to the JSON config file.
+
     Returns:
         poses     - dict mapping pose name -> pose dict
         home      - name of the home pose (or None)
@@ -180,8 +216,34 @@ async def load_config(filepath: str | Path) -> tuple[dict, str | None, dict]:
 
 
 def get_pickup_pose(theta_deg: float, tool_height: float, start_pos: np.ndarray) -> np.ndarray:
-    def flip_to_180_repr(rx, ry, rz):
-        """Convert XYZ Euler to the equivalent representation where Ry is near ±180."""
+    """
+    Computes the pickup pose for the robot.
+    This pose is so only the paper is picked up, not the SPM's.
+    This is used because of Gimble lock issues with the robot's orientation.
+    More info: https://en.wikipedia.org/wiki/Gimbal_lock
+
+    Params:
+        theta_deg (float): Angle of the pickup pose in degrees.
+        tool_height (float): Height of the tool above the surface.
+        start_pos (np.ndarray): Starting position of the robot.
+
+    Returns:
+        np.ndarray: The pickup pose as a 4x4 transformation matrix.
+    """
+    def flip_to_180_repr(rx: float, ry: float, rz: float) -> tuple[float, float, float]:
+        """
+        Convert XYZ Euler to the equivalent representation where Ry is near ±180.
+
+        Params:
+            rx (float): Rotation around the X-axis.
+            ry (float): Rotation around the Y-axis.
+            rz (float): Rotation around the Z-axis.
+
+        returns:
+            rx_f (float): Rotation around the X-axis in the 180-degree representation.
+            ry_f (float): Rotation around the Y-axis in the 180-degree representation.
+            rz_f (float): Rotation around the Z-axis in the 180-degree representation.
+        """
         rx_f = rx + 180 if rx < 0 else rx - 180
         ry_f = 180 - ry
         if ry_f > 180: ry_f -= 360   # normalize to [-180, 180]
@@ -214,42 +276,36 @@ def get_pickup_pose(theta_deg: float, tool_height: float, start_pos: np.ndarray)
 
     logger.debug(f"Pickup pose: {new_pos}")
 
-    # new_pos = start_pos.copy()
-
-    # current_rot = R.from_euler('xyz', start_pos[3:6], degrees=True)
-    # local_tilt = R.from_euler('x', theta_deg, degrees=True)
-
-    # new_rot = current_rot * local_tilt
-
-    # new_pos[3:6] = new_rot.as_euler('xyz', degrees=True)
-
-    # pivot_point = np.array([0.0, TOOL_HALF_WIDTH, 0.0])
-    # local_tcp = np.array([0.0, 0.0, 0.0])
-
-    # vec_pivot_to_tcp = local_tcp - pivot_point
-
-    # tilt_rot = R.from_euler('X', theta_deg, degrees=True)
-    # rotated_vec = tilt_rot.apply(vec_pivot_to_tcp)
-
-    # new_local_tcp = pivot_point + rotated_vec
-    # local_shift = new_local_tcp - local_tcp
-
-    # local_shift[2] += 60 # extra Z lift
-
-    # current_orientation = R.from_euler('XYZ', start_pos[3:6], degrees=True)
-    # world_shift = current_orientation.apply(local_shift)
-
-    # new_pos[0:3] += world_shift
-
-    # logger.debug(f"Pickup pose: {new_pos}")
-
     return new_pos
 
 
 def calculate_transformation(original: np.ndarray, offset: np.ndarray) -> np.ndarray:
+    """
+    Calculate the euler transformation from the original pose to the new pose.
+    Used beccause of gimbal lock issues.
 
-    def flip_to_180_repr(rx, ry, rz):
-        """Convert XYZ Euler to the equivalent representation where Ry is near ±180."""
+    Params:
+        original (np.ndarray): The original pose as rx, ry, rz Euler angles.
+        offset (np.ndarray): The offset to apply to the original pose.
+
+    Returns:
+        np.ndarray: The transformation pose as rx, ry, rz Euler angles.
+    """
+
+    def flip_to_180_repr(rx: float, ry: float, rz: float) -> Tuple[float, float, float]:
+        """
+        Convert XYZ Euler to the equivalent representation where Ry is near ±180.
+
+        Params:
+            rx (float): Rotation around the X-axis.
+            ry (float): Rotation around the Y-axis.
+            rz (float): Rotation around the Z-axis.
+
+        Returns:
+            rx_f (float): Rotation around the X-axis in the 180-degree representation.
+            ry_f (float): Rotation around the Y-axis in the 180-degree representation.
+            rz_f (float): Rotation around the Z-axis in the 180-degree representation.
+        """
         rx_f = rx + 180 if rx < 0 else rx - 180
         ry_f = 180 - ry
         if ry_f > 180: ry_f -= 360   # normalize to [-180, 180]
@@ -273,6 +329,13 @@ def calculate_transformation(original: np.ndarray, offset: np.ndarray) -> np.nda
     return np.array([rx, ry, rz], dtype=np.float32)
 
 def update_offsets(pose: np.ndarray, type: int):
+    """
+    Update the offsets for the given cell type based on the current pose.
+    This is used to provide a fixed offset for each SPM type when scanning for the positon.
+    Params:
+        pose (np.ndarray): The current pose as x, y, z, rx, ry, rz position.
+        type (int): The cell type to update the offset for.
+    """
     global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset
     if type == 1:
         _cell_type_1_offset = pose[2] + CELL_TYPE_1_OFFSET
@@ -295,7 +358,35 @@ async def run_sequence(
     database: WingPanelDB,
     visited: set | None = None
 ) -> None:
-    """Execute a named sequence of pose moves, air toggles, and camera-detected moves."""
+    """
+    Execute a named sequence of pose moves, air toggles, and camera-detected moves.
+
+    Runs diferent types of commands based on the step type.
+
+    step types:
+        - pose: Move to a named pose.
+        - air: Toggle the air valve.
+        - camera: Detect a panel and move to its position.
+        - camera_pickup: Move back up from a camera-detected position.
+        - place_down_up: Move back up from the place-down position.
+        - scan_barcode: Scan the barcode of the SPM and put it in the database.
+        - wait: Wait for a specified duration.
+        - wait_for_user_input: Wait for the user to press Enter. (Used for debugging)
+        - place_down: Specific move to place the SPM down. (using forcce feedback)
+        - calibrate: Measure the tray hight for the first scan.
+        - paper: Function to detect if paper is present. Continues until a SPM is detected.
+
+    Params:
+        steps (list): The list of steps to execute.
+        poses (dict): The dictionary of named poses.
+        sequences (dict): The dictionary of named sequences.
+        command_queue (mp.Queue): The queue to send commands to the robot.
+        result_queue (mp.Queue): The queue to receive results from the robot.
+        camera (CameraTCP): The camera to use for pose detection.
+        barcode_camera (CameraCode): The camera to use for barcode scanning.
+        database (WingPanelDB): The database to use for storing panel positions.
+        visited (set | None): The set of visited sequence names to detect circular references.
+    """
     global _cell_type_1_offset, _cell_type_2_offset, _cell_type_3_offset, _pickup_up
 
     if visited is None:
@@ -659,15 +750,35 @@ async def run_sequence(
             logger.warning(f"Unknown step type '{step_type}', skipping")
 
 def _prompt(message: str) -> str:
-    """Blocking stdin prompt, safe to run in an executor."""
+    """
+    Blocking stdin prompt, safe to run in an executor.
+
+    Params:
+        message (str): The prompt message to display.
+
+    Returns:
+        str: The user's input as a string.
+    """
     return input(message)
 
 
 async def main() -> None:
+    """
+    Main entry point for the movement script.
+
+    Raises:
+        Exception: If Camera 1 or Camera 2 fails to connect.
+        SystemExit: If the user cancels the operation.
+    """
     loop = asyncio.get_event_loop()
     main_task = asyncio.current_task()
 
     def _handle_sigint():
+        """
+        Signal handler for SIGINT (Ctrl+C).
+
+        If a movement is in progress, waits for it to finish before exiting.
+        """
         if _currently_moving:
             logger.info("SIGINT received, waiting for movement to finish...")  # TODO: Send immediate stop command.
         main_task.cancel()
@@ -785,6 +896,13 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    """
+    Main entry point for the movement script.
+
+    Raises:
+        asyncio.CancelledError: If the user cancels the operation.
+        Exception: If a system error occurs.
+    """
     try:
         asyncio.run(main())
     except asyncio.CancelledError:

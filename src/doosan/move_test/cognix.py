@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-
+"""
+functions to connect to the Cognex camera and read the data from the calculations.
+"""
 import asyncio
 import numpy as np
 import urllib.request
@@ -20,16 +22,31 @@ TRIGGER_WAIT_CELL = 2.0
 logger = logging.getLogger(__name__)
 
 class PickupType(IntEnum):
-    Empty = 0
-    Paper = 1
-    Foam = 2
-    No_detect = 3
-    Wrong_Panel = 4
-    Correct_panel = 5
+    """
+    Enum representing the pickup type detected by the Cognex camera.
+    """
+    Empty = 0 # Nothing detected
+    Paper = 1 # Paper detected
+    Foam = 2 # Foam detected
+    No_detect = 3 # No detection
+    Wrong_Panel = 4 # Wrong SPM detected
+    Correct_panel = 5 # Correct SPM detected
 
 class CognexCamera:
+    """
+    Main class representing a Cognex camera for pickup type detection.
+    """
 
     def __init__(self, ip: str, username: str ="admin", password: str = "", port: int = 23):
+        """
+        Initialize the Cognex camera with the given IP, username, password, and port.
+
+        Params:
+            ip (str): The IP address of the camera.
+            username (str): The username for the camera (default is "admin").
+            password (str): The password for the camera (default is "").
+            port (int): The port number for the camera (default is 23).
+        """
         self.ip: str = ip
         self.port: int = port
         self.username: str = username
@@ -40,6 +57,12 @@ class CognexCamera:
     # ── connection ────────────────────────────────────────────────────
 
     async def connect(self) -> None:
+        """
+        Connect to the Cognex camera using the provided IP, port, username, and password.
+
+        Raises:
+            ConnectionError: If the connection fails or the login credentials are invalid.
+        """
         self._reader, self._writer = await asyncio.open_connection(self.ip, self.port)
 
         await self._read_until(b"User: ")
@@ -64,6 +87,11 @@ class CognexCamera:
         await asyncio.sleep(0.8)
 
     async def disconnect(self):
+        """
+        Disconnect from the Cognex camera.
+
+        Closes the connection and resets the reader/writer to None.
+        """
         if self._writer:
             self._writer.close()
             await self._writer.wait_closed()
@@ -73,7 +101,15 @@ class CognexCamera:
     # ── camera actions ────────────────────────────────────────────────
 
     async def trigger(self)-> bool:
-        """Fire the camera. Returns True on success."""
+        """
+        Fire the camera.
+
+        Returns:
+            bool: True if the camera fired successfully, False otherwise.
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         resp = await self._send("SW8")
         return resp.strip() == "1"
 
@@ -81,6 +117,12 @@ class CognexCamera:
         """
         Read a spreadsheet cell value.
         Examples: read_cell("B0"), read_cell("C0"), read_cell("D5")
+
+        Params:
+            cell (str): The cell to read, e.g. "B0", "C0", "D5".
+
+        Returns:
+            str | None: The cell value, or None if the cell is empty or the camera is not connected.
         """
         cell = cell.strip().upper()
         col = "".join(c for c in cell if c.isalpha())
@@ -100,6 +142,16 @@ class CognexCamera:
         return lines[1].strip() if len(lines) >= 2 else None
 
     async def _trigger_and_read(self, cells: list[str], wait: float) -> dict[str, str | None] | None:
+        """
+        Trigger the camera and read the specified cells.
+
+        Params:
+            cells (list[str]): The cells to read, e.g. ["B0", "C0", "D5"].
+            wait (float): The number of seconds to wait after triggering.
+
+        Returns:
+            dict[str, str | None] | None: A dictionary of cell values, or None if the camera is not connected or an error occurs.
+        """
         await self.trigger()
         await asyncio.sleep(wait)
 
@@ -115,10 +167,22 @@ class CognexCamera:
         return result
 
     async def set_online(self) -> None:
+        """
+        Set the camera to online mode. (Needed before reading cells)
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         await self._send("SO1")
         await asyncio.sleep(0.5)
 
     async def set_offline(self) -> None:
+        """
+        Set the camera to offline mode.
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         await self._send("SO0")
 
     async def get_image(self) -> Image.Image | None:
@@ -126,11 +190,26 @@ class CognexCamera:
         Fetch the current camera image over HTTP.
         Returns a PIL Image object (requires Pillow: pip install Pillow).
         Note: Uses asyncio.to_thread to avoid blocking the event loop.
+
+        returns:
+            Image.Image | None: The fetched image, or None if an error occurred.
+
+        Raises:
+            ImportError: If Pillow is not installed.
         """
         if Image is None:
             raise ImportError("Install Pillow first:  pip install Pillow")
 
         def _fetch() -> Image.Image:
+            """
+            Fetches the current camera image over HTTP.
+
+            Returns:
+                Image.Image: The fetched image.
+
+            Raises:
+                ConnectionError: If the image could not be fetched from the camera.
+            """
             opener = urllib.request.build_opener()
             if self.username:
                 pm = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -148,7 +227,9 @@ class CognexCamera:
         return await asyncio.to_thread(_fetch)
 
     async def show_image(self) -> None:
-        """Fetch and display the image in a window (requires Pillow)."""
+        """
+        Fetch and display the image in a window (requires Pillow).
+        """
         img = await self.get_image()
         if img is not None:
             img.show()
@@ -156,6 +237,18 @@ class CognexCamera:
     # ── internals ────────────────────────────────────────────────────-
 
     async def _send(self, command: str) -> str:
+        """
+        Send a command to the camera and return the response.
+
+        Params:
+            command (str): The command to send.
+
+        Returns:
+            str: The response from the camera.
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         if self._writer is None:
             raise RuntimeError("Not connected")
 
@@ -172,6 +265,19 @@ class CognexCamera:
         return data.decode(errors="replace").strip()
 
     async def _read_until(self, *markers, timeout: float = 4.0) -> bytes:
+        """
+        Read bytes from the camera until one of the markers is found.
+
+        Params:
+            *markers: The bytes to search for.
+            timeout (float): The maximum time to wait for a marker.
+
+        Returns:
+            bytes: The bytes read from the camera.
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         if self._reader is None:
             raise RuntimeError("Not connected")
 
@@ -190,6 +296,19 @@ class CognexCamera:
         return buf
 
     async def _read_lines(self, n, timeout: float=5.0) -> bytes:
+        """
+        Read n lines from the camera.
+
+        Params:
+            n (int): The number of lines to read.
+            timeout (float): The maximum time to wait for each line.
+
+        Returns:
+            bytes: The bytes read from the camera.
+
+        Raises:
+            RuntimeError: If the camera is not connected.
+        """
         if self._reader is None:
             raise RuntimeError("Not connected")
         buf = b""
@@ -209,17 +328,42 @@ class CognexCamera:
         return buf
 
 class CameraTCP(CognexCamera):
+    """
+    Class with extra functions for the Camera mounted on the TCP of the robot.
+    """
     async def change_job_box(self) -> None:
+        """
+        Change the job box. (Check for paper or SPM)
+        """
         await self._send("SIA0261")
         await asyncio.sleep(0.8)
 
     async def change_job_scan(self) -> None:
+        """
+        Change the job scan. (Get pickup location)
+        """
         await self._send("SIA0260")
         await asyncio.sleep(0.8)
 
     async def scan_box(self, type: int) -> PickupType:
+        """
+        Scan the box for paper or SPM.
+
+        Params:
+            type: int - 1 for SPM type 1, 2 for SPM type 2, 3 for SPM type 3
+
+        """
 
         def _convert(value: str | None) -> bool:
+            """
+            Convert the result of a scan cell to a boolean.
+
+            Params:
+                value: str | None - The value to convert.
+
+            Returns:
+                bool - True if the value is '1', False otherwise.
+            """
 
             if value == '#ERR':
                 return False
@@ -305,6 +449,15 @@ class CameraTCP(CognexCamera):
         return PickupType.No_detect
 
     async def scan_scan(self, type: int) -> np.ndarray:
+        """
+        Scan for the locaton of the SPM
+
+        Params:
+            type: int - 1 for SPM type 1, 2 for SPM type 2, 3 for SPM type 3
+
+        Returns:
+            np.ndarray - The scan results as a numpy array. (X, Y, Z, Rx, Ry, Rz)
+        """
         await self.change_job_scan()
 
         if type == 1:
@@ -322,6 +475,15 @@ class CameraTCP(CognexCamera):
             return np.array([np.nan] * len(position_cells), dtype=np.float32)
 
         def to_float(v: str | None) -> float | None:
+            """
+            Convert a string value to a float, or return None if the value is None or cannot be converted.
+
+            Params:
+                v: str | None - The value to convert.
+
+            Returns:
+                float | None - The converted float value, or None if the value is None or cannot be converted.
+            """
             if v is None:
                 return None
             try:
@@ -334,7 +496,16 @@ class CameraTCP(CognexCamera):
         return values
 
 class CameraCode(CognexCamera):
+    """
+    Class with extra functions to scan QR codes and barcodes.
+    """
     async def scan_qr(self) -> str | None:
+        """
+        Scan for a QR code.
+
+        Returns:
+            str | None - The QR code value, or None if no code is detected or an error occurs.
+        """
         data = await self._trigger_and_read(["C2"], TRIGGER_WAIT_CELL)
 
         if data is None:
@@ -349,6 +520,12 @@ class CameraCode(CognexCamera):
         return data["C2"]
 
     async def scan_barcode(self) -> str | None:
+        """
+        Scan for a barcode.
+
+        Returns:
+            str | None - The barcode value, or None if no code is detected or an error occurs.
+        """
         data = await self._trigger_and_read(["C4"], TRIGGER_WAIT_CELL)
 
         logger.debug(f"raw barcode_Scan: '{data}'")
@@ -367,6 +544,10 @@ class CameraCode(CognexCamera):
 # ── main ──────────────────────────────────────────────────────────────
 
 async def main():
+    """
+    Main function to test the Cognex camera.
+    Not used in production.
+    """
     cam = CognexCamera("192.168.0.12", username="admin", password="")
     await cam.connect()
     print("Connected")
