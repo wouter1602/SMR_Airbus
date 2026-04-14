@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 import multiprocessing as mp
 import logging
 import asyncio
@@ -21,7 +22,7 @@ PORT_DOOSAN = 12345
 IP_CAMERA_TCP = "192.168.0.12"
 IP_CAMERA_CODE = "192.168.0.10"
 
-FORCE_Z_AXIS_DOWN = 100.0 # in mm
+FORCE_Z_AXIS_DOWN = 50.0 # in mm Was 100
 
 CELL_TYPE_1_OFFSET = 710.00 #697.71 # in mm
 CELL_TYPE_2_OFFSET = 706.00 #697.71 # in mm
@@ -31,14 +32,22 @@ TYPE_1_OFFSET = np.array([132.49, -179.01, 132.20], dtype=np.float32)#np.array([
 TYPE_2_OFFSET = np.array([25.47, -179.86, 24.31], dtype=np.float32) #np.array([12.10, -179.68, 10.52], dtype=np.float32)
 TYPE_3_OFFSET = np.array([116.27, -179.66, 115.47], dtype=np.float32)
 
-DOOSAN_SPEED = 60 #40 #60
-DOOSAN_ACCELERATION = 40 #20 #40
-DOOSAN_LIN_SPEED = 150 #70 #150
-DOOSAN_LIN_ACCELERATION = 75 #30 #75
+DOOSAN_SPEED = 150 #40 #60
+DOOSAN_ACCELERATION = 100 #20 #40
+DOOSAN_LIN_SPEED = 350 #70 #150
+DOOSAN_LIN_ACCELERATION = 200 #30 #75
+DOOSAN_LIN_SPEED_SLOW = 130
+DOOSAN_LIN_ACCELERATION_SLOW = 60
 
 
-MAX_FORCE_BOX = 5.5
+MAX_FORCE_BOX = 7.0 #5.5
 MAX_FORCE_PLACE_DOWN = 15.0
+
+
+# Pickup settings
+THETA_DEG = 15 # degrees
+TOOL_HEIGHT = 140 # mm
+TOOL_HALF_WIDTH = 115.0 # mm
 
 class RetrySequenceError(Exception):
     """ """
@@ -99,6 +108,9 @@ async def execute_poses(
 
     if "max_force" in pose:
         command_queue.put((move_type, pose_array, pose["max_force"]))
+    elif "max_speed" in pose:
+        logger.debug(f"Sending max_speed: {pose['max_speed']}")
+        command_queue.put((move_type, pose_array, pose["max_speed"]))
     else:
         command_queue.put((move_type, pose_array))
 
@@ -165,6 +177,73 @@ async def load_config(filepath: str | Path) -> tuple[dict, str | None, dict]:
     home = data.get("home")
     sequences = data.get("sequences", {})
     return poses, home, sequences
+
+
+def get_pickup_pose(theta_deg: float, tool_height: float, start_pos: np.ndarray) -> np.ndarray:
+    def flip_to_180_repr(rx, ry, rz):
+        """Convert XYZ Euler to the equivalent representation where Ry is near ±180."""
+        rx_f = rx + 180 if rx < 0 else rx - 180
+        ry_f = 180 - ry
+        if ry_f > 180: ry_f -= 360   # normalize to [-180, 180]
+        rz_f = rz + 180 if rz < 0 else rz - 180
+        return rx_f, ry_f, rz_f
+
+    new_pos = start_pos.copy()
+
+    base = R.from_euler('XYZ', [90, -180, 90], degrees=True)
+    tilt = R.from_euler('X', theta_deg, degrees=True)
+
+    # tilted = tilt * base # pre-multiply = world frame rotation
+
+    tilted = base * tilt
+
+    rx, ry, rz = tilted.as_euler('XYZ', degrees=True)
+    rx, ry, rz = flip_to_180_repr(rx, ry, rz)
+
+    theta = math.radians(theta_deg)
+
+    dz = tool_height * (1 - math.cos(theta)) + 60
+    # dy = tool_height * math.sin(theta)
+
+    ideal_rotation = np.array([rx, ry, rz])
+    corrected_rx_, corrected_ry, corrected_rz = calculate_transformation(ideal_rotation, start_pos[3:6])
+
+    new_pos[-3:] = [corrected_rx_, corrected_ry, corrected_rz]
+    new_pos[2] += dz
+    # new_pos[1] -= dy
+
+    logger.debug(f"Pickup pose: {new_pos}")
+
+    # new_pos = start_pos.copy()
+
+    # current_rot = R.from_euler('xyz', start_pos[3:6], degrees=True)
+    # local_tilt = R.from_euler('x', theta_deg, degrees=True)
+
+    # new_rot = current_rot * local_tilt
+
+    # new_pos[3:6] = new_rot.as_euler('xyz', degrees=True)
+
+    # pivot_point = np.array([0.0, TOOL_HALF_WIDTH, 0.0])
+    # local_tcp = np.array([0.0, 0.0, 0.0])
+
+    # vec_pivot_to_tcp = local_tcp - pivot_point
+
+    # tilt_rot = R.from_euler('X', theta_deg, degrees=True)
+    # rotated_vec = tilt_rot.apply(vec_pivot_to_tcp)
+
+    # new_local_tcp = pivot_point + rotated_vec
+    # local_shift = new_local_tcp - local_tcp
+
+    # local_shift[2] += 60 # extra Z lift
+
+    # current_orientation = R.from_euler('XYZ', start_pos[3:6], degrees=True)
+    # world_shift = current_orientation.apply(local_shift)
+
+    # new_pos[0:3] += world_shift
+
+    # logger.debug(f"Pickup pose: {new_pos}")
+
+    return new_pos
 
 
 def calculate_transformation(original: np.ndarray, offset: np.ndarray) -> np.ndarray:
@@ -352,6 +431,7 @@ async def run_sequence(
                     "name": "pickup above",
                     "move_type": "linear",
                     "pose_array": list(pickup_pose),
+                    "max_speed": [DOOSAN_LIN_SPEED_SLOW, DOOSAN_LIN_ACCELERATION_SLOW],
                 }
 
                 await execute_poses(pickup, command_queue, result_queue)
@@ -460,6 +540,8 @@ async def run_sequence(
 
             pose["pose_array"] = coords
             pose["move_type"] = "force"
+            pose["max_force"] = MAX_FORCE_BOX
+
             logger.info(f"new pose: {pose['pose_array']}")
 
             await asyncio.sleep(0.5)
@@ -496,9 +578,17 @@ async def run_sequence(
 
             place_array = copy.deepcopy(pickup_pose["pose_array"])
 
+            pickup_pose_slow = copy.deepcopy(pickup_pose)
+            pickup_pose_slow["max_speed"] = [DOOSAN_LIN_SPEED_SLOW, DOOSAN_LIN_ACCELERATION_SLOW]
+
+            up_array = pickup_pose_slow["pose_array"]
+            up_array[2] = up_array[2] + 80
+
+            pickup_pose_slow["pose_array"] = up_array
+
             force_array[2] = force_array[2] - FORCE_Z_AXIS_DOWN
 
-            place_array[2] = place_array[2] + FORCE_Z_AXIS_DOWN
+            place_array[2] = place_array[2] + FORCE_Z_AXIS_DOWN + 50
 
             force_pose = {
                 "move_type": "force",
@@ -531,7 +621,10 @@ async def run_sequence(
 
                     await asyncio.sleep(0.8)
 
-                    await execute_poses(pickup_pose, command_queue, result_queue)
+                    if _current_force_pose is not None and cell_type == 1:
+                        pickup_pose_slow["pose_array"] = get_pickup_pose(THETA_DEG, TOOL_HEIGHT, _current_force_pose)
+
+                    await execute_poses(pickup_pose_slow, command_queue, result_queue)
 
                     await execute_poses(place_pose, command_queue, result_queue)
 

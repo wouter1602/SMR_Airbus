@@ -31,6 +31,7 @@ MAX_FORCE_BOX = 5.5 #5.5
 
 # Compliance control — stiffness per axis [X, Y, Z, Rx, Ry, Rz]
 # COMPLIANCE_STIFFNESS = np.array([500.0, 500.0, 500.0, 100.0, 100.0, 100.0], dtype=np.float32)
+# COMPLIANCE_STIFFNESS = np.array([2500.0, 2500.0, 1500.0, 200.0, 200.0, 200.0], dtype=np.float32)
 COMPLIANCE_STIFFNESS = np.array([2500.0, 2500.0, 1500.0, 200.0, 200.0, 200.0], dtype=np.float32)
 
 # Force probe — apply 5N in -Z direction only
@@ -376,6 +377,11 @@ class RobotController:
             if move_type == "movejx":
                 if not handler(pose_array, output):
                     result_queue.put("error: Movement timed out")
+                    continue
+            elif move_type == "linear" and len(command) == 3 and output is not None:
+                logger.info(f"Doing costum move with speed={output[0]}, acc={output[1]}")
+                if not handler(pose_array, speed=output[0], acc=output[1]):
+                    result_queue.put("error:Move command failed")
                     continue
             else:
                 if not handler(pose_array):
