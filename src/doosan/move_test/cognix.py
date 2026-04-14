@@ -263,7 +263,7 @@ class CameraTCP(CognexCamera):
             if type == 1:
                 await self.change_job_scan()
                 position_cells_scan = ["Q35"]
-                data = await self._trigger_and_read(position_cells_scan, TRIGGER_WAIT_CELL)
+                data = await self._trigger_and_read(position_cells_scan, 1.0)
                 if data is None:
                     return PickupType.No_detect
                 else:
@@ -351,16 +351,18 @@ class CameraCode(CognexCamera):
     async def scan_barcode(self) -> str | None:
         data = await self._trigger_and_read(["C4"], TRIGGER_WAIT_CELL)
 
+        logger.debug(f"raw barcode_Scan: '{data}'")
+
         if data is None:
             return None
 
-        if data["C4"] is None:
+        elif data["C4"] is None:
             return None
 
-        if data["C4"] == '#ERR':
+        elif data["C4"] == '#ERR':
             return None
-
-        return data["C4"]
+        else:
+            return data["C4"]
 
 # ── main ──────────────────────────────────────────────────────────────
 
